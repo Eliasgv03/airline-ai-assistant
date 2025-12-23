@@ -1,0 +1,68 @@
+default_stages: [pre-commit]
+exclude: ^tests/|backend/data/|frontend/node_modules/|frontend/.next/
+
+repos:
+  # General file cleanup and validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim trailing whitespace
+      - id: end-of-file-fixer
+        name: Fix end of files
+      - id: check-yaml
+        name: Check YAML syntax
+        args: ['--unsafe']
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-added-large-files
+        name: Check for large files
+        args: ['--maxkb=1024']
+      - id: pretty-format-json
+        name: Format JSON files
+        args: [--autofix, --no-ensure-ascii, --no-sort-keys]
+      - id: check-toml
+        name: Check TOML syntax
+      - id: check-case-conflict
+        name: Check for case conflicts
+
+  # Python: Upgrade syntax to modern Python
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.15.0
+    hooks:
+      - id: pyupgrade
+        name: Upgrade Python syntax
+        args: [--py310-plus]
+        files: ^backend/
+
+  # Python: Ruff linter and formatter (replaces black, isort, flake8)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.15
+    hooks:
+      - id: ruff
+        name: Ruff linter
+        args: [--fix, --config=backend/pyproject.toml]
+        files: ^backend/
+      - id: ruff-format
+        name: Ruff formatter
+        args: [--config=backend/pyproject.toml]
+        files: ^backend/
+
+  # Python: Type checking with mypy
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: Type check with mypy
+        files: ^backend/
+        types: [python]
+        additional_dependencies:
+          - "pydantic>=2.6.0"
+          - "types-requests>=2.31.0"
+          - "sqlalchemy>=2.0.0"
+          - "fastapi>=0.109.0"
+
+ci:
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false

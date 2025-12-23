@@ -77,6 +77,19 @@ npm run dev
 ```
 *Frontend will be available at http://localhost:3000*
 
+### 5. Setup Pre-commit Hooks (Optional but Recommended)
+
+```bash
+# Install pre-commit hooks
+cd backend
+poetry run pre-commit install
+
+# Run manually on all files (optional)
+poetry run pre-commit run --all-files
+```
+
+This will automatically run code quality checks (ruff, mypy) before each commit.
+
 ## 🛠️ Architecture
 
 - **LLM**: Google Gemini 1.5 Flash (via Google AI)
@@ -102,4 +115,3 @@ This project uses **PostgreSQL + pgvector** instead of FAISS for:
 ## 📝 License
 
 This project is part of a technical evaluation.
-
