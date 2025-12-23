@@ -3,6 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
 from app.core.config import get_settings
+from app.utils.logger import setup_logging
+
+# Setup logging
+setup_logging()
 
 settings = get_settings()
 
