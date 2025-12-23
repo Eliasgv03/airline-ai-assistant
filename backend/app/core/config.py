@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     # LLM (Gemini / Google Generative AI)
     GOOGLE_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-1.5-flash"
+    
+    # Database (PostgreSQL with pgvector)
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/airline_ai"
+    
+    # Vector Store Configuration
+    VECTOR_STORE_COLLECTION_NAME: str = "air_india_policies"
+    EMBEDDING_DIMENSION: int = 768
 
     model_config = SettingsConfigDict(
         env_file=".env", 
