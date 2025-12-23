@@ -11,10 +11,9 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     session_id: str = Field(..., min_length=1, description="Conversation session identifier")
     message: str = Field(..., min_length=1, description="User message content")
-    system_prompt: str | None = Field(default=None, description="Optional system prompt override")
-    temperature: float = Field(default=0.3, ge=0.0, le=1.0)
 
 
 class ChatResponse(BaseModel):
-    reply: str
-    meta: dict | None = None
+    session_id: str
+    message: str
+    metadata: dict | None = None
