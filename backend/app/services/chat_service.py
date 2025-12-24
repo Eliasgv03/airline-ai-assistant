@@ -13,6 +13,7 @@ It serves as the main entry point for the chat API.
 from app.prompts.system_prompts import get_system_prompt
 from app.services.llm_service import chat_complete, create_message
 from app.services.memory_service import get_memory_service
+from app.services.vector_service import VectorService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -26,26 +27,12 @@ class ChatService:
     def __init__(self):
         """Initialize the chat service."""
         self.memory_service = get_memory_service()
-        logger.info("ChatService initialized")
+        self.vector_service = VectorService()
+        logger.info("ChatService initialized with RAG support")
 
     def process_message(self, session_id: str, user_message: str) -> str:
         """
-        Process a user message and generate a response.
-
-        Flow:
-        1. Retrieve/Create session memory
-        2. Add user message to memory
-        3. Construct full prompt (System Persona + History)
-        4. Generate response via LLM
-        5. Add response to memory
-        6. Return response
-
-        Args:
-            session_id: Unique session identifier
-            user_message: The user's input text
-
-        Returns:
-            The assistant's generated response
+        Process a user message and generate a response with RAG context.
         """
         logger.info(f"Processing message for session {session_id}")
 
@@ -56,28 +43,41 @@ class ChatService:
             # 2. Get conversation history
             history = self.memory_service.get_history(session_id)
 
-            # 3. Construct messages for LLM
-            # Start with the Unified System Prompt (Persona)
+            # 3. RAG: Retrieve relevant context
+            logger.info("Retrieving context from vector store...")
+            relevant_docs = self.vector_service.similarity_search(user_message, k=3)
+
+            context_text = ""
+            if relevant_docs:
+                context_text = "\n\nRELEVANT AIR INDIA POLICIES:\n"
+                for doc in relevant_docs:
+                    context_text += (
+                        f"--- FROM DOCUMENT: {doc.metadata.get('source', 'Unknown')} ---\n"
+                    )
+                    context_text += f"{doc.page_content}\n\n"
+
+            # 4. Construct messages for LLM
             system_prompt = get_system_prompt()
 
+            # Inject RAG context into instructions
+            full_instructions = f"{system_prompt}\n{context_text}"
+
             # NOTE: Using 'user' role for system prompt to force finding identity in some models
-            # that might ignore system instructions.
             messages = [
                 create_message(
-                    "user", f"SYSTEM INSTRUCTIONS:\n{system_prompt}\n\nCONFIRM YOU UNDERSTAND."
+                    "user", f"SYSTEM INSTRUCTIONS:\n{full_instructions}\n\nCONFIRM YOU UNDERSTAND."
                 ),
                 create_message(
                     "assistant",
-                    "I understand. I am Maharaja Assistant, Air India's virtual assistant. I am ready to help.",
+                    "I understand. I am Maharaja Assistant, Air India's virtual assistant. I have access to the provided policies and history. I am ready to help.",
                 ),
-                *history,  # Unpack the entire conversation history
+                *history,
             ]
 
-            # 4. Generate response
-            # Using moderate temperature for balance between creativity and accuracy
+            # 5. Generate response
             response_text = chat_complete(messages, temperature=0.3)
 
-            # 5. Add assistant response to history
+            # 6. Add assistant response to history
             self.memory_service.add_message(session_id, "assistant", response_text)
 
             logger.info(f"Response generated for session {session_id}")

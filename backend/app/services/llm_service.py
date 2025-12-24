@@ -37,19 +37,20 @@ def get_llm(temperature: float = 0.3, max_tokens: int | None = None) -> ChatGoog
         LLMServiceError: If API key is missing or configuration fails
     """
     if not settings.GOOGLE_API_KEY:
-        raise LLMServiceError(
-            "GOOGLE_API_KEY is not configured. "
-            "Please set it in your .env file or environment variables."
-        )
+        raise LLMServiceError("GOOGLE_API_KEY is not configured.")
+
+    model_name = settings.GEMINI_MODEL.strip()
+    api_key = settings.GOOGLE_API_KEY.strip()
 
     try:
         llm = ChatGoogleGenerativeAI(
-            model=settings.GEMINI_MODEL,
+            model=model_name,
             temperature=temperature,
             max_output_tokens=max_tokens,
-            google_api_key=settings.GOOGLE_API_KEY,
+            google_api_key=api_key,
+            max_retries=0,  # Disable retries to stop the "forever loading" and see errors immediately
         )
-        logger.info(f"LLM initialized: model={settings.GEMINI_MODEL}, temperature={temperature}")
+        logger.info(f"LLM initialized: model={model_name}, temperature={temperature}")
         return llm
     except Exception as e:
         logger.error(f"Failed to initialize LLM: {str(e)}")

@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Vector Store Configuration
     VECTOR_STORE_COLLECTION_NAME: str = "air_india_policies"
-    EMBEDDING_DIMENSION: int = 768
+    EMBEDDING_DIMENSION: int = 384
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
