@@ -1,8 +1,8 @@
 """
-LLM Service - Google Gemini Integration
+LLM Service - Google Gemini Integration with Model Fallback
 
 This service provides a centralized interface for interacting with Google's Gemini LLM.
-It handles configuration, error handling, and logging for all LLM operations.
+It handles configuration, error handling, logging, and automatic model fallback.
 """
 
 import logging
@@ -24,7 +24,7 @@ class LLMServiceError(Exception):
 
 def get_llm(temperature: float = 0.3, max_tokens: int | None = None) -> ChatGoogleGenerativeAI:
     """
-    Get configured LLM instance.
+    Get configured LLM instance with automatic model fallback.
 
     Args:
         temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
@@ -34,27 +34,38 @@ def get_llm(temperature: float = 0.3, max_tokens: int | None = None) -> ChatGoog
         Configured ChatGoogleGenerativeAI instance
 
     Raises:
-        LLMServiceError: If API key is missing or configuration fails
+        LLMServiceError: If API key is missing or all models in pool fail
     """
     if not settings.GOOGLE_API_KEY:
         raise LLMServiceError("GOOGLE_API_KEY is not configured.")
 
-    model_name = settings.GEMINI_MODEL.strip()
     api_key = settings.GOOGLE_API_KEY.strip()
 
-    try:
-        llm = ChatGoogleGenerativeAI(
-            model=model_name,
-            temperature=temperature,
-            max_output_tokens=max_tokens,
-            google_api_key=api_key,
-            max_retries=0,  # Disable retries to stop the "forever loading" and see errors immediately
-        )
-        logger.info(f"LLM initialized: model={model_name}, temperature={temperature}")
-        return llm
-    except Exception as e:
-        logger.error(f"Failed to initialize LLM: {str(e)}")
-        raise LLMServiceError(f"Failed to initialize LLM: {str(e)}") from e
+    # Try each model in the pool
+    last_error = None
+    for model_name in settings.GEMINI_MODEL_POOL:
+        try:
+            logger.info(f"Attempting to initialize LLM with model: {model_name}")
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                google_api_key=api_key,
+                max_retries=0,  # Disable automatic retries to control fallback manually
+            )
+            logger.info(
+                f"✅ LLM initialized successfully: model={model_name}, temperature={temperature}"
+            )
+            return llm
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to initialize model {model_name}: {str(e)}")
+            last_error = e
+            continue  # Try next model in pool
+
+    # If all models failed
+    error_msg = f"All models in pool failed. Last error: {str(last_error)}"
+    logger.error(error_msg)
+    raise LLMServiceError(error_msg) from last_error
 
 
 def chat_complete(

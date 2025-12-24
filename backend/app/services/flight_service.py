@@ -5,7 +5,8 @@ Provides flight search functionality with flexible matching and filtering.
 """
 
 
-from app.data.flight_data import FLIGHTS_DB, normalize_location
+from data.flight_data import FLIGHTS_DB, normalize_location
+
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)

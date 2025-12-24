@@ -24,7 +24,18 @@ class Settings(BaseSettings):
 
     # LLM (Gemini / Google Generative AI)
     GOOGLE_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+
+    # Model pool with fallback (ordered by preference)
+    # As of December 2025: Gemini 1.5 deprecated, use 2.5/3.0 series
+    GEMINI_MODEL_POOL: list[str] = [
+        "gemini-2.5-flash",  # Primary: Fast, capable, good free tier
+        "gemini-2.5-flash-lite",  # Fallback 1: High throughput, 1000-1500 RPD
+        "gemini-1.5-flash",  # Fallback 2: Legacy support (if still available)
+        "gemini-2.0-flash",  # Fallback 3: Older but stable
+    ]
+
+    # Primary model (first in pool)
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # Database (PostgreSQL with pgvector)
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/airline_ai"
