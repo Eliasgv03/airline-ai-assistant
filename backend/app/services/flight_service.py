@@ -1,60 +1,111 @@
 """
-Flight Search Service
+Flight Search Service with Real API Integration
 
-Provides flight search functionality with flexible matching and filtering.
+Provides flight search functionality with Amadeus API integration
+and automatic fallback to mock data.
 """
 
+import os
 
 from data.flight_data import FLIGHTS_DB, normalize_location
 
+from app.models.flight import Flight
+from app.services.amadeus_api import get_amadeus_api
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
 class FlightService:
-    """Service for searching and filtering flights"""
+    """Service for searching flights with API integration and fallback"""
 
     def __init__(self):
+        self.amadeus_api = get_amadeus_api()
         self.flights_db = FLIGHTS_DB
-        logger.info(f"FlightService initialized with {len(self.flights_db)} flights")
+        self.use_real_api = os.getenv("USE_REAL_FLIGHT_API", "true").lower() == "true"
 
-    def search_flights(
-        self, origin: str, destination: str, date: str | None = None, max_results: int = 10
-    ) -> list[dict]:
+        logger.info(
+            f"FlightService initialized: "
+            f"Real API={'enabled' if self.use_real_api else 'disabled'}, "
+            f"Mock flights={len(self.flights_db)}"
+        )
+
+    async def search_flights(
+        self,
+        origin: str,
+        destination: str,
+        date: str | None = None,
+        max_results: int = 10,
+    ) -> list[Flight]:
         """
-        Search for flights between two locations.
+        Search for flights with automatic API fallback
+
+        Priority:
+        1. Try real API (if enabled and configured)
+        2. Fallback to mock data
 
         Args:
-            origin: Origin city or airport code (e.g., "Delhi", "DEL")
-            destination: Destination city or airport code (e.g., "Mumbai", "BOM")
-            date: Optional date filter (e.g., "today", "tomorrow", "2024-12-25")
-            max_results: Maximum number of results to return
+            origin: Origin city or airport code
+            destination: Destination city or airport code
+            date: Optional date filter
+            max_results: Maximum number of results
 
         Returns:
-            List of matching flights sorted by departure time
+            List of Flight objects
         """
-        logger.info(f"Searching flights: {origin} -> {destination}, date={date}")
-
-        # Normalize locations to airport codes
         origin_code = normalize_location(origin)
-        dest_code = normalize_location(destination)
+        destination_code = normalize_location(destination)
 
-        logger.debug(f"Normalized: {origin_code} -> {dest_code}")
+        logger.info(f"🔍 Searching flights: {origin_code} → {destination_code}, date={date}")
 
+        # Try real API first
+        if self.use_real_api and self.amadeus_api.is_configured():
+            try:
+                logger.info("🌐 Attempting Amadeus API search...")
+                flights = await self.amadeus_api.search_flights(
+                    origin=origin_code,
+                    destination=destination_code,
+                    date=date,
+                    max_results=max_results,
+                )
+
+                if flights:
+                    logger.info(f"✅ Found {len(flights)} flights from Amadeus API")
+                    return flights
+                else:
+                    logger.warning("⚠️ Amadeus API returned no flights, using mock data")
+
+            except Exception as e:
+                logger.error(f"❌ Amadeus API failed: {e}, falling back to mock data")
+
+        # Fallback to mock data
+        logger.info(f"📦 Using mock data for {origin_code} → {destination_code}")
+        return self._search_mock_flights(origin_code, destination_code, max_results)
+
+    def _search_mock_flights(
+        self, origin: str, destination: str, max_results: int = 10
+    ) -> list[Flight]:
+        """
+        Search mock flight data
+
+        Args:
+            origin: Origin airport code
+            destination: Destination airport code
+            max_results: Maximum results
+
+        Returns:
+            List of Flight objects
+        """
         # Filter flights by route
         matching_flights = [
             flight
             for flight in self.flights_db
-            if flight["origin"] == origin_code and flight["destination"] == dest_code
+            if flight["origin"] == origin and flight["destination"] == destination
         ]
 
         if not matching_flights:
-            logger.info(f"No flights found for route {origin_code} -> {dest_code}")
+            logger.info(f"❌ No mock data for route {origin} → {destination}")
             return []
-
-        # TODO: Filter by date if provided (for now, return all)
-        # In a real implementation, you would check flight availability for specific dates
 
         # Sort by departure time
         matching_flights.sort(key=lambda f: f["departure_time"])
@@ -62,55 +113,71 @@ class FlightService:
         # Limit results
         results = matching_flights[:max_results]
 
-        logger.info(f"Found {len(results)} flights for {origin_code} -> {dest_code}")
-        return results
+        # Convert to Flight objects
+        flights = []
+        for flight_data in results:
+            flight = Flight(
+                flight_number=flight_data["flight_number"],
+                origin=flight_data["origin"],
+                origin_city=flight_data["origin_city"],
+                destination=flight_data["destination"],
+                destination_city=flight_data["destination_city"],
+                departure_time=flight_data["departure_time"],
+                arrival_time=flight_data["arrival_time"],
+                duration=flight_data["duration"],
+                aircraft=flight_data["aircraft"],
+                price_economy=flight_data["price_economy"],
+                price_business=flight_data["price_business"],
+                available_seats=9,  # Default
+            )
+            flights.append(flight)
 
-    def get_flight_by_number(self, flight_number: str) -> dict | None:
+        logger.info(f"📦 Found {len(flights)} mock flights")
+        return flights
+
+    def get_flight_by_number(self, flight_number: str) -> Flight | None:
         """
-        Get flight details by flight number.
+        Get flight details by flight number from mock data
 
         Args:
             flight_number: Flight number (e.g., "AI 865")
 
         Returns:
-            Flight details or None if not found
+            Flight object or None
         """
         flight_number = flight_number.upper().strip()
 
-        for flight in self.flights_db:
-            if flight["flight_number"].upper() == flight_number:
-                return flight
+        for flight_data in self.flights_db:
+            if flight_data["flight_number"].upper() == flight_number:
+                return Flight(
+                    flight_number=flight_data["flight_number"],
+                    origin=flight_data["origin"],
+                    origin_city=flight_data["origin_city"],
+                    destination=flight_data["destination"],
+                    destination_city=flight_data["destination_city"],
+                    departure_time=flight_data["departure_time"],
+                    arrival_time=flight_data["arrival_time"],
+                    duration=flight_data["duration"],
+                    aircraft=flight_data["aircraft"],
+                    price_economy=flight_data["price_economy"],
+                    price_business=flight_data["price_business"],
+                    available_seats=9,  # Default
+                )
 
         return None
 
-    def format_flight_for_display(self, flight: dict) -> str:
-        """
-        Format a single flight for display.
-
-        Args:
-            flight: Flight dictionary
-
-        Returns:
-            Formatted string
-        """
+    def format_flight_for_display(self, flight: Flight) -> str:
+        """Format a single flight for display"""
         return (
-            f"✈️ **{flight['flight_number']}** - {flight['origin_city']} ({flight['origin']}) "
-            f"→ {flight['destination_city']} ({flight['destination']})\n"
-            f"   ⏰ {flight['departure_time']} - {flight['arrival_time']} ({flight['duration']})\n"
-            f"   💺 {flight['aircraft']}\n"
-            f"   💰 Economy: ₹{flight['price_economy']:,} | Business: ₹{flight['price_business']:,}"
+            f"✈️ **{flight.flight_number}** - {flight.origin_city} ({flight.origin}) "
+            f"→ {flight.destination_city} ({flight.destination})\n"
+            f"   ⏰ {flight.departure_time} - {flight.arrival_time} ({flight.duration})\n"
+            f"   💺 {flight.aircraft}\n"
+            f"   💰 Economy: ₹{flight.price_economy:,} | Business: ₹{flight.price_business:,}"
         )
 
-    def format_flights_list(self, flights: list[dict]) -> str:
-        """
-        Format a list of flights for display.
-
-        Args:
-            flights: List of flight dictionaries
-
-        Returns:
-            Formatted string with all flights
-        """
+    def format_flights_list(self, flights: list[Flight]) -> str:
+        """Format a list of flights for display"""
         if not flights:
             return "No flights found for this route."
 
