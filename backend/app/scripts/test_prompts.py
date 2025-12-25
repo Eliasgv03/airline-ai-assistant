@@ -7,7 +7,7 @@ Run with: poetry run python -m app.scripts.test_prompts
 """
 
 from app.prompts.system_prompts import get_system_prompt
-from app.services.llm_service import chat_complete, create_message
+from app.services.gemini_service import chat_complete, create_message
 from app.utils.logger import setup_logging
 
 # Setup logging

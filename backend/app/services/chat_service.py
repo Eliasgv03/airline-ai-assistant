@@ -11,7 +11,7 @@ from langchain_core.messages import ToolMessage
 
 from app.core.config import get_settings
 from app.prompts.system_prompts import get_system_prompt
-from app.services.llm_service import LLMServiceError, get_llm
+from app.services.gemini_service import LLMServiceError, get_llm
 from app.services.memory_service import get_memory_service
 from app.services.vector_service import VectorService
 from app.tools import ALL_TOOLS
@@ -31,27 +31,65 @@ class ChatService:
 
     def _invoke_with_fallback(self, messages) -> AIMessage:
         """
-        Invoke LLM with automatic fallback to other models in the pool.
+        Invoke LLM with automatic fallback across models AND providers.
+
+        Strategy:
+        1. Try all models in current provider's pool
+        2. If all fail, try alternative provider
         """
+        from app.services.llm_manager import invoke_with_fallback_provider
+
+        provider = settings.LLM_PROVIDER
+        logger.info(f"Using LLM provider: {provider}")
+
+        # Get model pool based on provider
+        if provider == "gemini":
+            model_pool = settings.GEMINI_MODEL_POOL
+        elif provider == "groq":
+            model_pool = settings.GROQ_MODEL_POOL
+        else:
+            model_pool = settings.GEMINI_MODEL_POOL  # Default to Gemini
+
         last_error = None
-        for model_name in settings.GEMINI_MODEL_POOL:
+        for model_name in model_pool:
             try:
                 # Get LLM for specific model
-                llm = get_llm(temperature=0.3, model_name=model_name)
+                if provider == "gemini":
+                    from app.services.gemini_service import get_llm
+
+                    llm = get_llm(temperature=0.3, model_name=model_name)
+                elif provider == "groq":
+                    from app.services.groq_service import get_groq_llm
+
+                    llm = get_groq_llm(temperature=0.3, model_name=model_name)
+                else:
+                    from app.services.gemini_service import get_llm
+
+                    llm = get_llm(temperature=0.3, model_name=model_name)
 
                 # Bind tools
                 llm_with_tools = llm.bind_tools(self.tools)
 
                 # Invoke
-                logger.debug(f"Invoking LLM with model: {model_name}")
+                logger.debug(f"Invoking {provider} LLM with model: {model_name}")
                 return llm_with_tools.invoke(messages)
             except Exception as e:
-                logger.warning(f"⚠️ Model {model_name} failed: {e}")
+                logger.warning(f"⚠️ {provider} model {model_name} failed: {e}")
                 last_error = e
                 continue
 
-        # If all execution attempts fail
-        error_msg = f"All models failed. Last error: {last_error}"
+        # If all models in current provider failed, try cross-provider fallback
+        logger.warning(f"All {provider} models failed, attempting cross-provider fallback")
+        try:
+            response = invoke_with_fallback_provider(messages)
+            # Bind tools to response if needed
+            return response
+        except Exception as e:
+            logger.error(f"Cross-provider fallback also failed: {e}")
+            last_error = e
+
+        # If everything failed
+        error_msg = f"All models and providers failed. Last error: {last_error}"
         logger.error(f"❌ {error_msg}")
         if last_error:
             raise last_error
@@ -186,17 +224,38 @@ class ChatService:
 
             logger.info("💬 Starting streaming response...")
 
+            # Get model pool based on provider
+            provider = settings.LLM_PROVIDER
+            logger.info(f"Using LLM provider for streaming: {provider}")
+
+            if provider == "gemini":
+                model_pool = settings.GEMINI_MODEL_POOL
+            elif provider == "groq":
+                model_pool = settings.GROQ_MODEL_POOL
+            else:
+                logger.warning(f"Unknown provider '{provider}', defaulting to Gemini")
+                model_pool = settings.GEMINI_MODEL_POOL
+                provider = "gemini"
+
             # Try each model in the pool
             last_error = None
             full_response = ""
 
-            for model_name in settings.GEMINI_MODEL_POOL:
+            for model_name in model_pool:
                 try:
-                    # Get LLM for specific model
-                    llm = get_llm(temperature=0.3, model_name=model_name)
+                    # Get LLM for specific model based on provider
+                    if provider == "gemini":
+                        llm = get_llm(temperature=0.3, model_name=model_name)
+                    elif provider == "groq":
+                        from app.services.groq_service import get_groq_llm
+
+                        llm = get_groq_llm(temperature=0.3, model_name=model_name)
+                    else:
+                        llm = get_llm(temperature=0.3, model_name=model_name)
+
                     llm_with_tools = llm.bind_tools(self.tools)
 
-                    logger.debug(f"Streaming with model: {model_name}")
+                    logger.debug(f"Streaming with {provider} model: {model_name}")
 
                     # Stream the response
                     async for chunk in llm_with_tools.astream(messages):
@@ -216,29 +275,28 @@ class ChatService:
                             yield "\n\n[Processing tool request...]\n\n"
 
                     # If we got here, streaming succeeded
-                    logger.info(f"✅ Streaming completed with model: {model_name}")
+                    logger.info(f"✅ Streaming completed with {provider} model: {model_name}")
                     break
 
                 except Exception as e:
-                    logger.warning(f"⚠️ Streaming failed with model {model_name}: {e}")
+                    logger.warning(f"⚠️ Streaming failed with {provider} model {model_name}: {e}")
                     last_error = e
                     continue
 
             # If all models failed
-            if not full_response and last_error:
-                error_msg = f"All models failed. Last error: {last_error}"
+            if not full_response:
+                error_msg = f"All {provider} models failed. Last error: {last_error}"
                 logger.error(f"❌ {error_msg}")
-                yield "I apologize, but I'm experiencing technical difficulties. Please try again."
-                raise LLMServiceError(error_msg)
+                yield "\n\nI apologize, but I'm experiencing technical difficulties with all available models. Please try again in a moment.\n\n"
 
-            # Add complete response to memory
-            self.memory_service.add_message(session_id, "assistant", full_response)
-            logger.info(f"🎉 Streaming message processed successfully for session {session_id}")
+            # Add complete response to memory (if we got any response)
+            if full_response:
+                self.memory_service.add_message(session_id, "assistant", full_response)
+                logger.info(f"🎉 Streaming message processed successfully for session {session_id}")
 
         except Exception as e:
             logger.error(f"❌ Error in streaming: {str(e)}", exc_info=True)
-            yield f"I apologize, but an error occurred: {str(e)}"
-            raise
+            yield "\n\nI apologize, but an error occurred. Please try again.\n\n"
 
     def clear_session(self, session_id: str) -> None:
         """Clear the conversation history for a session"""

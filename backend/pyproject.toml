@@ -29,6 +29,7 @@ langchain-postgres = "^0.0.16"
 asyncpg = "^0.31.0"
 sentence-transformers = "^5.2.0"
 langchain-huggingface = "^0.0.3"
+langchain-groq = ">=0.1.0,<2.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0.0"

@@ -7,7 +7,7 @@ Run with: poetry run python -m app.scripts.test_llm
 
 import sys
 
-from app.services.llm_service import LLMServiceError, chat_complete, create_message
+from app.services.gemini_service import LLMServiceError, chat_complete, create_message
 from app.utils.logger import setup_logging
 
 # Setup logging
