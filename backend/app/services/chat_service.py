@@ -12,6 +12,7 @@ from langchain_core.messages import ToolMessage
 from app.core.config import get_settings
 from app.prompts.system_prompts import get_system_prompt
 from app.services.gemini_service import LLMServiceError, get_llm
+from app.services.language_service import detect_language, get_language_instruction
 from app.services.memory_service import get_memory_service
 from app.services.vector_service import VectorService
 from app.tools import ALL_TOOLS
@@ -110,6 +111,11 @@ class ChatService:
             logger.info(f"🔵 Processing message for session {session_id}")
             logger.debug(f"User message: {user_message[:100]}...")
 
+            # 🌍 Detect user's language
+            detected_lang = detect_language(user_message)
+            lang_instruction = get_language_instruction(detected_lang)
+            logger.info(f"🌍 Detected language: {detected_lang}")
+
             # Add user message to memory
             self.memory_service.add_message(session_id, "user", user_message)
 
@@ -123,9 +129,10 @@ class ChatService:
             context = "\n\n".join([doc.page_content for doc in context_docs])
             logger.debug(f"Retrieved {len(context_docs)} context documents ({len(context)} chars)")
 
-            # Build messages for LLM
+            # Build messages for LLM with language instruction
             system_prompt = get_system_prompt(context)
-            messages = [SystemMessage(content=system_prompt)]
+            system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
+            messages = [SystemMessage(content=system_prompt_with_lang)]
 
             # Add conversation history (convert BaseMessage to proper format)
             messages.extend(history)
@@ -204,6 +211,11 @@ class ChatService:
             logger.info(f"🔵 Processing streaming message for session {session_id}")
             logger.debug(f"User message: {user_message[:100]}...")
 
+            # 🌍 Detect user's language
+            detected_lang = detect_language(user_message)
+            lang_instruction = get_language_instruction(detected_lang)
+            logger.info(f"🌍 Detected language: {detected_lang}")
+
             # Add user message to memory
             self.memory_service.add_message(session_id, "user", user_message)
 
@@ -217,9 +229,10 @@ class ChatService:
             context = "\n\n".join([doc.page_content for doc in context_docs])
             logger.debug(f"Retrieved {len(context_docs)} context documents ({len(context)} chars)")
 
-            # Build messages for LLM
+            # Build messages for LLM with language instruction
             system_prompt = get_system_prompt(context)
-            messages = [SystemMessage(content=system_prompt)]
+            system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
+            messages = [SystemMessage(content=system_prompt_with_lang)]
             messages.extend(history)
 
             logger.info("💬 Starting streaming response...")
