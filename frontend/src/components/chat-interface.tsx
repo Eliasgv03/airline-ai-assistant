@@ -10,7 +10,7 @@ import { TypingIndicator } from "./typing-indicator"
 import { FlightCard, type FlightData } from "./flight-card"
 import { Send, Moon, Sun, AlertCircle } from "lucide-react"
 import { useTheme } from "next-themes"
-import { sendMessage, generateSessionId } from "@/lib/api"
+import { sendMessage, sendMessageStream, generateSessionId } from "@/lib/api"
 
 interface Message {
     id: string
@@ -65,31 +65,54 @@ export function ChatInterface() {
         setIsTyping(true)
         setError(null)
 
+        // Create placeholder message for streaming response
+        const assistantMessageId = (Date.now() + 1).toString()
+        const assistantMessage: Message = {
+            id: assistantMessageId,
+            content: "",
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        }
+        setMessages((prev) => [...prev, assistantMessage])
+
         try {
-            // Real API call to backend
-            const response = await sendMessage(sessionId, currentInput)
+            // Use streaming API
+            await sendMessageStream(
+                sessionId,
+                currentInput,
+                // onChunk: append each chunk to the message
+                (chunk: string) => {
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.id === assistantMessageId
+                                ? { ...msg, content: msg.content + chunk }
+                                : msg
+                        )
+                    )
+                },
+                // onComplete: stop typing indicator
+                () => {
+                    setIsTyping(false)
+                },
+                // onError: handle errors
+                (error: Error) => {
+                    console.error("Error streaming message:", error)
+                    setError("Failed to get response from assistant. Please try again.")
+                    setIsTyping(false)
 
-            const assistantMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                content: response.message,
-                isUser: false,
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            }
-
-            setMessages((prev) => [...prev, assistantMessage])
+                    // Update message with error
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.id === assistantMessageId
+                                ? { ...msg, content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment." }
+                                : msg
+                        )
+                    )
+                }
+            )
         } catch (err) {
             console.error("Error sending message:", err)
             setError("Failed to get response from assistant. Please try again.")
-
-            // Add error message to chat
-            const errorMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
-                isUser: false,
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            }
-            setMessages((prev) => [...prev, errorMessage])
-        } finally {
             setIsTyping(false)
         }
     }

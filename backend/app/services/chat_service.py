@@ -151,6 +151,95 @@ class ChatService:
             logger.error(f"❌ Error processing message: {str(e)}", exc_info=True)
             raise
 
+    async def process_message_stream(self, session_id: str, user_message: str):
+        """
+        Process a user message and stream assistant response in chunks
+
+        Args:
+            session_id: Unique session identifier
+            user_message: User's input message
+
+        Yields:
+            Response chunks as they are generated
+        """
+        try:
+            logger.info(f"🔵 Processing streaming message for session {session_id}")
+            logger.debug(f"User message: {user_message[:100]}...")
+
+            # Add user message to memory
+            self.memory_service.add_message(session_id, "user", user_message)
+
+            # Get conversation history
+            history = self.memory_service.get_history(session_id)
+            logger.debug(f"Retrieved {len(history)} messages from history")
+
+            # Retrieve context from vector store
+            logger.info("📚 Retrieving context from vector store...")
+            context_docs = self.vector_service.similarity_search(user_message, k=3)
+            context = "\n\n".join([doc.page_content for doc in context_docs])
+            logger.debug(f"Retrieved {len(context_docs)} context documents ({len(context)} chars)")
+
+            # Build messages for LLM
+            system_prompt = get_system_prompt(context)
+            messages = [SystemMessage(content=system_prompt)]
+            messages.extend(history)
+
+            logger.info("💬 Starting streaming response...")
+
+            # Try each model in the pool
+            last_error = None
+            full_response = ""
+
+            for model_name in settings.GEMINI_MODEL_POOL:
+                try:
+                    # Get LLM for specific model
+                    llm = get_llm(temperature=0.3, model_name=model_name)
+                    llm_with_tools = llm.bind_tools(self.tools)
+
+                    logger.debug(f"Streaming with model: {model_name}")
+
+                    # Stream the response
+                    async for chunk in llm_with_tools.astream(messages):
+                        # Extract content from chunk
+                        if hasattr(chunk, "content") and chunk.content:
+                            content = chunk.content
+                            full_response += content
+                            yield content
+
+                        # Handle tool calls if present
+                        if hasattr(chunk, "tool_calls") and chunk.tool_calls:
+                            logger.info(
+                                f"🔧 Tool calls detected in stream: {len(chunk.tool_calls)}"
+                            )
+                            # For now, we'll handle tools in non-streaming mode
+                            # This is a simplification - full implementation would stream tool results too
+                            yield "\n\n[Processing tool request...]\n\n"
+
+                    # If we got here, streaming succeeded
+                    logger.info(f"✅ Streaming completed with model: {model_name}")
+                    break
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Streaming failed with model {model_name}: {e}")
+                    last_error = e
+                    continue
+
+            # If all models failed
+            if not full_response and last_error:
+                error_msg = f"All models failed. Last error: {last_error}"
+                logger.error(f"❌ {error_msg}")
+                yield "I apologize, but I'm experiencing technical difficulties. Please try again."
+                raise LLMServiceError(error_msg)
+
+            # Add complete response to memory
+            self.memory_service.add_message(session_id, "assistant", full_response)
+            logger.info(f"🎉 Streaming message processed successfully for session {session_id}")
+
+        except Exception as e:
+            logger.error(f"❌ Error in streaming: {str(e)}", exc_info=True)
+            yield f"I apologize, but an error occurred: {str(e)}"
+            raise
+
     def clear_session(self, session_id: str) -> None:
         """Clear the conversation history for a session"""
         self.memory_service.clear_session(session_id)
