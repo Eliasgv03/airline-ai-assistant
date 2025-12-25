@@ -6,6 +6,7 @@ It handles configuration, error handling, logging, and automatic model fallback.
 """
 
 import logging
+import os
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -38,6 +39,14 @@ def get_llm(
     Raises:
         LLMServiceError: If API key is missing or all models in pool fail
     """
+    # Configure LangSmith tracing if enabled
+    if settings.is_tracing_enabled:
+        os.environ["LANGSMITH_TRACING"] = "true"
+        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY or ""
+        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+        os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+        logger.info("🔍 LangSmith tracing enabled for Gemini")
+
     if not settings.GOOGLE_API_KEY:
         raise LLMServiceError("GOOGLE_API_KEY is not configured.")
 

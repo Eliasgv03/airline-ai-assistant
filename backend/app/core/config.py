@@ -68,6 +68,31 @@ class Settings(BaseSettings):
     # LLM Provider Selection
     LLM_PROVIDER: str = "gemini"  # Options: "gemini" or "groq"
 
+    # ========================================
+    # LangSmith Tracing Configuration
+    # ========================================
+
+    # Enable/disable tracing (LangSmith uses LANGSMITH_TRACING)
+    LANGSMITH_TRACING: bool = False
+
+    # LangSmith API key
+    LANGSMITH_API_KEY: str | None = None
+
+    # Project name in LangSmith
+    LANGSMITH_PROJECT: str = "airline-ai-assistant"
+
+    # LangSmith endpoint
+    LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
+
+    @property
+    def is_tracing_enabled(self) -> bool:
+        """Check if LangSmith tracing is properly configured"""
+        return (
+            self.LANGSMITH_TRACING
+            and self.LANGSMITH_API_KEY is not None
+            and len(self.LANGSMITH_API_KEY) > 0
+        )
+
     # Database (PostgreSQL with pgvector)
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/airline_ai"
 
@@ -80,4 +105,15 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings():
-    return Settings()
+    settings = Settings()
+
+    # Map LangSmith config to LangChain env vars for library compatibility
+    if settings.is_tracing_enabled:
+        import os
+
+        os.environ["LANGCHAIN_TRACING_V2"] = "true"
+        os.environ["LANGCHAIN_API_KEY"] = settings.LANGSMITH_API_KEY or ""
+        os.environ["LANGCHAIN_PROJECT"] = settings.LANGSMITH_PROJECT
+        os.environ["LANGCHAIN_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+
+    return settings

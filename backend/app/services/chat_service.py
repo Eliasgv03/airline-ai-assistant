@@ -8,6 +8,7 @@ import logging
 
 from langchain.schema import AIMessage, SystemMessage
 from langchain_core.messages import ToolMessage
+from langsmith import traceable
 
 from app.core.config import get_settings
 from app.prompts.system_prompts import get_system_prompt
@@ -96,6 +97,7 @@ class ChatService:
             raise last_error
         raise LLMServiceError(error_msg)
 
+    @traceable(run_type="chain", name="process_message")
     def process_message(self, session_id: str, user_message: str) -> str:
         """
         Process a user message and return assistant response
@@ -196,6 +198,7 @@ class ChatService:
             logger.error(f"❌ Error processing message: {str(e)}", exc_info=True)
             raise
 
+    @traceable(run_type="chain", name="process_message_stream")
     async def process_message_stream(self, session_id: str, user_message: str):
         """
         Process a user message and stream assistant response in chunks

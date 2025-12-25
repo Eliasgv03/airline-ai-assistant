@@ -6,6 +6,7 @@ Groq offers generous free tier quotas and extremely low latency.
 """
 
 import logging
+import os
 
 from langchain_core.messages import BaseMessage
 from langchain_groq import ChatGroq
@@ -39,6 +40,14 @@ def get_groq_llm(
     Raises:
         GroqServiceError: If API key is missing or all models in pool fail
     """
+    # Configure LangSmith tracing if enabled
+    if settings.is_tracing_enabled:
+        os.environ["LANGSMITH_TRACING"] = "true"
+        os.environ["LANGSMITH_API_KEY"] = settings.LANGSMITH_API_KEY or ""
+        os.environ["LANGSMITH_PROJECT"] = settings.LANGSMITH_PROJECT
+        os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
+        logger.info("🔍 LangSmith tracing enabled for Groq")
+
     if not settings.GROQ_API_KEY:
         raise GroqServiceError("GROQ_API_KEY is not configured.")
 
