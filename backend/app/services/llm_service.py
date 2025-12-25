@@ -22,7 +22,9 @@ class LLMServiceError(Exception):
     pass
 
 
-def get_llm(temperature: float = 0.3, max_tokens: int | None = None) -> ChatGoogleGenerativeAI:
+def get_llm(
+    temperature: float = 0.3, max_tokens: int | None = None, model_name: str | None = None
+) -> ChatGoogleGenerativeAI:
     """
     Get configured LLM instance with automatic model fallback.
 
@@ -41,13 +43,16 @@ def get_llm(temperature: float = 0.3, max_tokens: int | None = None) -> ChatGoog
 
     api_key = settings.GOOGLE_API_KEY.strip()
 
+    # Determine which models to try
+    models_to_try = [model_name] if model_name else settings.GEMINI_MODEL_POOL
+
     # Try each model in the pool
     last_error = None
-    for model_name in settings.GEMINI_MODEL_POOL:
+    for model in models_to_try:
         try:
-            logger.info(f"Attempting to initialize LLM with model: {model_name}")
+            logger.info(f"Attempting to initialize LLM with model: {model}")
             llm = ChatGoogleGenerativeAI(
-                model=model_name,
+                model=model,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
                 google_api_key=api_key,

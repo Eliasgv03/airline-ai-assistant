@@ -26,7 +26,14 @@ logger = get_logger(__name__)
 class VectorService:
     def __init__(self):
         # Using a local, lightweight embedding model (384 dimensions)
-        self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        logger.info("Initializing VectorService...")
+        logger.info("Loading embedding model (all-MiniLM-L6-v2)... This may take a moment.")
+        try:
+            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            logger.info("✅ Embedding model loaded successfully.")
+        except Exception as e:
+            logger.error(f"❌ Failed to load embedding model: {e}")
+            raise
 
         # PGVector instance
         # connecting strictly with the sync driver string or valid connection info

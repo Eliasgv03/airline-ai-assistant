@@ -61,11 +61,23 @@ Travel safe!"
 """
 
 
-def get_system_prompt() -> str:
+def get_system_prompt(context: str = "") -> str:
     """
-    Get the unified system prompt.
+    Get the unified system prompt, optionally enriched with RAG context.
+
+    Args:
+        context: Optional context string retrieved from vector store
 
     Returns:
-        The multilingual system prompt string.
+        The multilingual system prompt string with context if provided.
     """
-    return UNIFIED_SYSTEM_PROMPT
+    if not context:
+        return UNIFIED_SYSTEM_PROMPT
+
+    return f"""{UNIFIED_SYSTEM_PROMPT}
+
+## 📚 RELEVANT CONTEXT (From Search)
+Use the following information to answer the user's question. If the answer is not in this context, use your general knowledge but mention that this is general information.
+
+{context}
+"""

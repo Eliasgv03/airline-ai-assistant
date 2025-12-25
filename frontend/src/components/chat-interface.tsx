@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input"
 import { ChatMessage } from "./chat-message"
 import { TypingIndicator } from "./typing-indicator"
 import { FlightCard, type FlightData } from "./flight-card"
-import { Send, Moon, Sun } from "lucide-react"
+import { Send, Moon, Sun, AlertCircle } from "lucide-react"
 import { useTheme } from "next-themes"
+import { sendMessage, generateSessionId } from "@/lib/api"
 
 interface Message {
     id: string
@@ -20,17 +21,23 @@ interface Message {
 }
 
 export function ChatInterface() {
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: "1",
-            content:
-                "Welcome to Air India! I'm your virtual assistant. How can I help you today? You can ask me about flights, bookings, or any travel-related queries.",
-            isUser: false,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-    ])
+    const [sessionId] = useState(() => generateSessionId())
+    const [messages, setMessages] = useState<Message[]>([])
+
+    // Add welcome message on mount to avoid hydration mismatch (timestamp)
+    useEffect(() => {
+        setMessages([
+            {
+                id: "1",
+                content: "Welcome to Air India! I'm your virtual assistant. How can I help you today? You can ask me about flights, bookings, or any travel-related queries.",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            },
+        ])
+    }, [])
     const [inputValue, setInputValue] = useState("")
     const [isTyping, setIsTyping] = useState(false)
+    const [error, setError] = useState<string | null>(null)
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const { theme, setTheme } = useTheme()
 
@@ -53,60 +60,38 @@ export function ChatInterface() {
         }
 
         setMessages((prev) => [...prev, userMessage])
+        const currentInput = inputValue
         setInputValue("")
         setIsTyping(true)
+        setError(null)
 
-        // Simulate assistant response
-        setTimeout(() => {
-            setIsTyping(false)
+        try {
+            // Real API call to backend
+            const response = await sendMessage(sessionId, currentInput)
 
-            // Check if user is asking about flights
-            const isFlightQuery =
-                inputValue.toLowerCase().includes("flight") ||
-                inputValue.toLowerCase().includes("delhi") ||
-                inputValue.toLowerCase().includes("mumbai")
-
-            if (isFlightQuery) {
-                const assistantMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    content: "I found some available flights for you. Here are the best options:",
-                    isUser: false,
-                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                }
-
-                const flightMessage: Message = {
-                    id: (Date.now() + 2).toString(),
-                    content: "",
-                    isUser: false,
-                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                    flight: {
-                        flightNumber: "AI 860",
-                        from: "Indira Gandhi International Airport",
-                        to: "Chhatrapati Shivaji Maharaj International Airport",
-                        fromCode: "DEL",
-                        toCode: "BOM",
-                        departureTime: "14:30",
-                        arrivalTime: "16:45",
-                        date: "December 28, 2025",
-                        duration: "2h 15m",
-                        price: "₹8,450",
-                        aircraft: "Boeing 787 Dreamliner",
-                    },
-                }
-
-                setMessages((prev) => [...prev, assistantMessage, flightMessage])
-            } else {
-                const assistantMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    content:
-                        "I understand your query. I can help you with flight bookings, check-in, baggage information, flight status, and more. Would you like to search for a flight?",
-                    isUser: false,
-                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                }
-
-                setMessages((prev) => [...prev, assistantMessage])
+            const assistantMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                content: response.message,
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             }
-        }, 1500)
+
+            setMessages((prev) => [...prev, assistantMessage])
+        } catch (err) {
+            console.error("Error sending message:", err)
+            setError("Failed to get response from assistant. Please try again.")
+
+            // Add error message to chat
+            const errorMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+                isUser: false,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            }
+            setMessages((prev) => [...prev, errorMessage])
+        } finally {
+            setIsTyping(false)
+        }
     }
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
