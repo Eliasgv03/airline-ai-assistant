@@ -23,7 +23,7 @@ class MemoryService:
     Old sessions are automatically cleaned up based on TTL.
     """
 
-    def __init__(self, ttl_minutes: int = 60):
+    def __init__(self, ttl_minutes: int | float = 60):
         """
         Initialize the memory service.
 
@@ -166,7 +166,7 @@ class MemoryService:
 _memory_service: MemoryService | None = None
 
 
-def get_memory_service(ttl_minutes: int = 60) -> MemoryService:
+def get_memory_service(ttl_minutes: int | float = 60) -> MemoryService:
     """
     Get the global memory service instance (singleton).
 

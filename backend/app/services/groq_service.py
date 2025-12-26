@@ -65,7 +65,7 @@ def get_groq_llm(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                groq_api_key=api_key,
+                groq_api_key=api_key,  # type: ignore[call-arg]
                 max_retries=2,
             )
             logger.info(
