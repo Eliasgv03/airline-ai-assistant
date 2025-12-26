@@ -7,11 +7,10 @@ and automatic fallback to mock data.
 
 import os
 
-from data.flight_data import FLIGHTS_DB, normalize_location
-
 from app.models.flight import Flight
 from app.services.amadeus_api import get_amadeus_api
 from app.utils.logger import get_logger
+from data.flight_data import FLIGHTS_DB, normalize_location
 
 logger = get_logger(__name__)
 

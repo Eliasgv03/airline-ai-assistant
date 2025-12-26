@@ -5,8 +5,8 @@ This service integrates with Amadeus Flight Offers Search API to provide
 real-time flight data with automatic fallback to mock data.
 """
 
-import os
 from datetime import datetime, timedelta
+import os
 
 from amadeus import Client, ResponseError
 

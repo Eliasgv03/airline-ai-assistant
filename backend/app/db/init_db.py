@@ -11,9 +11,10 @@ Usage:
 
 import asyncio
 
+from sqlalchemy import text
+
 from app.db.database import engine
 from app.utils.logger import get_logger, setup_logging
-from sqlalchemy import text
 
 # Ensure models are imported so Base.metadata knows about them
 # We will create the vector model in a moment, but for now we want to setup the extension

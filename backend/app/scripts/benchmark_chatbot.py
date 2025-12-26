@@ -11,8 +11,8 @@ Generates a comprehensive report with metrics and recommendations.
 """
 
 import json
-import time
 from pathlib import Path
+import time
 
 from app.services.chat_service import ChatService
 from app.utils.logger import get_logger

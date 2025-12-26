@@ -4,8 +4,8 @@ Enhanced logging middleware for FastAPI
 Logs all requests with detailed information for debugging.
 """
 
-import time
 from collections.abc import Callable
+import time
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
