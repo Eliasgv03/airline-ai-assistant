@@ -61,7 +61,7 @@ def test_hindi_query():
         print(f"🤖 Assistant: {response}\n")
 
         # Validation: Check for Hindi characters
-        has_hindi = any("\u0900" <= char <= "\u097F" for char in response)
+        has_hindi = any("\u0900" <= char <= "\u097f" for char in response)
 
         if has_hindi:
             print("✅ Response detected Hindi and replied in Hindi")

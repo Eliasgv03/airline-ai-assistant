@@ -35,7 +35,7 @@ async def test_flight_search():
     ]
 
     for origin, destination, date in test_cases:
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"🔍 Test: {origin} → {destination} (date: {date})")
         print("=" * 80)
 

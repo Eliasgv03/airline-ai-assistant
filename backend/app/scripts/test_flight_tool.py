@@ -37,20 +37,20 @@ def test_flight_search():
     print("=" * 80)
 
     for i, query in enumerate(TEST_QUERIES, 1):
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"TEST {i}/{len(TEST_QUERIES)}")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"USER: {query}")
-        print(f"{'-'*80}")
+        print(f"{'-' * 80}")
 
         try:
             response = chat_service.process_message(session_id, query)
             print(f"ASSISTANT: {response}")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
 
         except Exception as e:
             print(f"ERROR: {str(e)}")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
 
     print("\n" + "=" * 80)
     print("TESTING COMPLETE")

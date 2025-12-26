@@ -21,7 +21,7 @@ services:
       - key: LLM_PROVIDER
         value: groq
       - key: GEMINI_MODEL
-        value: gemini-2.0-flash-lite
+        value: gemini-2.5-flash-lite
       - key: GROQ_MODEL
         value: llama-3.3-70b-versatile
       - key: ENVIRONMENT
@@ -31,9 +31,9 @@ services:
       - key: VECTOR_STORE_COLLECTION_NAME
         value: air_india_policies
       - key: EMBEDDING_DIMENSION
-        value: 768
+        value: 384
       - key: USE_REAL_FLIGHT_API
-        value: false
+        value: true
       - key: LANGSMITH_TRACING
         value: false
 

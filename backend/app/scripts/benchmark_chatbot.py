@@ -179,7 +179,7 @@ def run_benchmark_test(chat_service: ChatService, session_id: str, test_case: di
     max_latency = test_case["max_latency_ms"]
     category = test_case["category"]
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info(f"Testing: {query}")
     logger.info(f"Category: {category}")
     logger.info(f"Expected topics: {', '.join(expected_topics)}")
@@ -251,7 +251,7 @@ def run_benchmarks():
 
     # Run all tests
     for test_group, tests in BENCHMARK_TESTS.items():
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info(f"📋 Test Group: {test_group.upper()}")
         logger.info("=" * 80)
 
@@ -263,7 +263,7 @@ def run_benchmarks():
     summary = metrics.get_summary()
     category_stats = metrics.get_category_stats()
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("📊 BENCHMARK RESULTS SUMMARY")
     logger.info("=" * 80)
     logger.info(f"Total Tests: {summary['total_tests']}")
@@ -273,7 +273,7 @@ def run_benchmarks():
     logger.info(f"Average Latency: {summary['avg_latency_ms']:.0f}ms")
     logger.info(f"Average Accuracy: {summary['avg_accuracy']:.1f}%")
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("📈 RESULTS BY CATEGORY")
     logger.info("=" * 80)
     for category, stats in category_stats.items():
@@ -285,7 +285,7 @@ def run_benchmarks():
     # Failed tests details
     failed_results = [r for r in metrics.results if not r.get("passed", False)]
     if failed_results:
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info("❌ FAILED TESTS DETAILS")
         logger.info("=" * 80)
         for result in failed_results:
@@ -312,12 +312,12 @@ def run_benchmarks():
             indent=2,
         )
 
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info(f"💾 Results saved to: {output_file}")
     logger.info("=" * 80)
 
     # Final verdict
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     if summary["pass_rate"] >= 80:
         logger.info("🎉 EXCELLENT! Chatbot performance is strong")
     elif summary["pass_rate"] >= 60:

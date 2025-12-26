@@ -107,7 +107,7 @@ def test_rag_quality():
         expected_topics = test_case["expected_topics"]
         document = test_case["document"]
 
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info(f"Test {i}/{len(TEST_QUERIES)}")
         logger.info(f"Document: {document}")
         logger.info(f"Query: {query}")
@@ -161,7 +161,7 @@ def test_rag_quality():
             )
 
     # Summary
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("SUMMARY")
     logger.info("=" * 80)
 

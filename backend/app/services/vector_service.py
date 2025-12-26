@@ -8,7 +8,6 @@ This module handles the RAG (Retrieval-Augmented Generation) pipeline:
 4. Storing and retrieving vectors using pgvector.
 """
 
-
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -85,7 +84,7 @@ class VectorService:
         for i in range(0, len(chunks), batch_size):
             batch = chunks[i : i + batch_size]
             logger.info(
-                f"Ingesting batch {i//batch_size + 1}/{len(chunks)//batch_size + 1} ({len(batch)} chunks)..."
+                f"Ingesting batch {i // batch_size + 1}/{len(chunks) // batch_size + 1} ({len(batch)} chunks)..."
             )
             try:
                 self.vector_store.add_documents(batch)

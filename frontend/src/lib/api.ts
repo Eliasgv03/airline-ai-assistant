@@ -4,7 +4,17 @@
  * Handles all communication with the FastAPI backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Get backend URL from environment variable
+// Fallback to localhost for development
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL || // Fallback for old variable name
+    'http://localhost:8000';
+
+// Validate API_BASE_URL
+if (typeof window !== 'undefined' && !API_BASE_URL) {
+    console.warn('⚠️ NEXT_PUBLIC_BACKEND_URL is not set. Using default: http://localhost:8000');
+}
 
 export interface ChatRequest {
     session_id: string;
@@ -147,12 +157,27 @@ export async function sendMessageStream(
         onComplete();
 
     } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        const isNetworkError = errorMessage.includes('Failed to fetch') ||
+                               errorMessage.includes('NetworkError') ||
+                               errorMessage.includes('Network request failed');
+
         console.error("Streaming API Error:", {
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: errorMessage,
             error,
-            url: `${API_BASE_URL}/api/chat/stream`
+            url: `${API_BASE_URL}/api/chat/stream`,
+            isNetworkError,
+            suggestion: isNetworkError
+                ? "Make sure the backend is running on " + API_BASE_URL
+                : "Check the browser console for more details"
         });
-        onError(error instanceof Error ? error : new Error('Unknown streaming error'));
+
+        // Provide more helpful error message
+        const userFriendlyError = isNetworkError
+            ? new Error(`Cannot connect to backend server. Please make sure the backend is running at ${API_BASE_URL}`)
+            : (error instanceof Error ? error : new Error('Unknown streaming error'));
+
+        onError(userFriendlyError);
     }
 }
 

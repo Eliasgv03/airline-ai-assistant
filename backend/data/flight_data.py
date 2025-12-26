@@ -5,7 +5,6 @@ This module contains realistic Air India flight data for demonstration purposes.
 Structure is designed to be easily replaceable with real API data.
 """
 
-
 # Airport code mappings
 AIRPORT_CODES = {
     # Indian cities

@@ -88,8 +88,7 @@ def get_flight_details(flight_number: str) -> str:
 
         if not flight:
             return (
-                f"Flight {flight_number} not found. "
-                f"Please check the flight number and try again."
+                f"Flight {flight_number} not found. Please check the flight number and try again."
             )
 
         # Format single flight details

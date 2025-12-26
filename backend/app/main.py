@@ -18,10 +18,22 @@ app = FastAPI(
 )
 
 # CORS Middleware
+# For production, we allow Render domains dynamically
+# In development, we use the specific origins from config
+cors_origins = settings.BACKEND_CORS_ORIGINS.copy()
+if settings.ENVIRONMENT == "production" and not cors_origins:
+    # In production, if no specific origins are set, allow all origins
+    # Note: This is acceptable for a demo/portfolio project
+    # For better security, add specific frontend URL to BACKEND_CORS_ORIGINS
+    cors_origins = ["*"]
+
+# Cannot use allow_credentials=True with allow_origins=["*"]
+allow_creds = "*" not in cors_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=allow_creds,
     allow_methods=["*"],
     allow_headers=["*"],
 )

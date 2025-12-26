@@ -43,7 +43,7 @@ def test_model_availability():
     test_prompt = "Say 'Hello' in one word."
 
     for model_name in settings.GEMINI_MODEL_POOL:
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info(f"Testing Model: {model_name}")
         logger.info("-" * 80)
 
@@ -73,7 +73,7 @@ def test_model_availability():
             }
 
     # Summary
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("📊 TEST RESULTS SUMMARY")
     logger.info("=" * 80)
 
@@ -92,7 +92,7 @@ def test_model_availability():
             logger.info(f"    Error: {error[:100]}...")
 
     # Recommendations
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("💡 RECOMMENDATIONS")
     logger.info("=" * 80)
 
@@ -114,7 +114,7 @@ def test_model_availability():
 
 async def test_streaming():
     """Test streaming with the model pool"""
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("🌊 TESTING STREAMING FUNCTIONALITY")
     logger.info("=" * 80)
 
@@ -157,7 +157,7 @@ def main():
         streaming_ok = False
 
     # Final verdict
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("🏁 FINAL VERDICT")
     logger.info("=" * 80)
 

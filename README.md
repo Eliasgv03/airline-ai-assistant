@@ -34,17 +34,29 @@ docker run -d \
 docker exec -it airline-postgres psql -U postgres -d airline_ai -c "CREATE EXTENSION IF NOT EXISTS vector;"
 ```
 
-For detailed setup instructions, see [docs/PGVECTOR_SETUP.md](docs/PGVECTOR_SETUP.md)
+The database will be available at `localhost:5432` with:
+- User: `postgres`
+- Password: `postgres`
+- Database: `airline_ai`
 
 ### 2. Environment Setup
 
 ```bash
 # Backend (.env)
 cd backend
-cp .env.example .env
-# Edit .env and add:
-# - GOOGLE_API_KEY=your_google_ai_api_key
-# - DATABASE_URL=postgresql://postgres:postgres@localhost:5432/airline_ai
+# Create .env file with the following variables:
+cat > .env << EOF
+# Required
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/airline_ai
+LLM_PROVIDER=groq  # or "gemini"
+GROQ_API_KEY=your_groq_api_key_here  # Get from https://console.groq.com/keys
+# OR
+# GOOGLE_API_KEY=your_google_api_key_here  # Get from https://makersuite.google.com/app/apikey
+
+# Optional
+ENVIRONMENT=development
+LOG_LEVEL=info
+EOF
 ```
 
 ```bash

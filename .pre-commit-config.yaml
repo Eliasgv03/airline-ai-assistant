@@ -4,7 +4,7 @@ exclude: ^tests/|backend/data/|frontend/node_modules/|frontend/.next/
 repos:
   # General file cleanup and validation
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         name: Trim trailing whitespace
@@ -28,7 +28,7 @@ repos:
 
   # Python: Upgrade syntax to modern Python
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.15.0
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
         name: Upgrade Python syntax
@@ -37,20 +37,22 @@ repos:
 
   # Python: Ruff linter and formatter (replaces black, isort, flake8)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.15
+    rev: v0.14.10
     hooks:
       - id: ruff
         name: Ruff linter
         args: [--fix, --config=backend/pyproject.toml]
         files: ^backend/
+        types_or: [python, pyi]
       - id: ruff-format
         name: Ruff formatter
         args: [--config=backend/pyproject.toml]
         files: ^backend/
+        types_or: [python, pyi]
 
   # Python: Type checking with mypy
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         name: Type check with mypy

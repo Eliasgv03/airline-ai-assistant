@@ -16,13 +16,20 @@ class Settings(BaseSettings):
     BACKEND_PORT: int = 8000
 
     # CORS
+    # Note: Wildcards like "https://*.onrender.com" don't work with FastAPI CORS
+    # For production, you can either:
+    # 1. Add specific Render URLs here
+    # 2. Use BACKEND_CORS_ORIGINS=["*"] for development (not recommended for production)
+    # 3. Use a custom CORS middleware that validates origins dynamically
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:3000",
         "http://localhost:8000",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "http://0.0.0.0:3000",
-        "https://*.onrender.com",
+        "https://airline-ai-assistant-1.onrender.com",
+        # Add your specific Render frontend URL here when deploying
+        # Example: "https://airline-ai-assistant-frontend.onrender.com",
     ]
 
     # ========================================

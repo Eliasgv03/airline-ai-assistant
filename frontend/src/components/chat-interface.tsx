@@ -98,7 +98,6 @@ export function ChatInterface() {
                 // onError: handle errors
                 (error: Error) => {
                     console.error("Error streaming message:", error)
-                    setError("Failed to get response from assistant. Please try again.")
                     setIsTyping(false)
 
                     // Update message with error
@@ -113,8 +112,16 @@ export function ChatInterface() {
             )
         } catch (err) {
             console.error("Error sending message:", err)
-            setError("Failed to get response from assistant. Please try again.")
             setIsTyping(false)
+
+            // Update message with error
+            setMessages((prev) =>
+                prev.map((msg) =>
+                    msg.id === assistantMessageId
+                        ? { ...msg, content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment." }
+                        : msg
+                )
+            )
         }
     }
 
