@@ -64,7 +64,7 @@ export function ChatInterface() {
         const currentInput = inputValue
         setInputValue("")
         setIsTyping(true)
-        setError(null)
+
 
         // Create placeholder message for streaming response
         const assistantMessageId = (Date.now() + 1).toString()

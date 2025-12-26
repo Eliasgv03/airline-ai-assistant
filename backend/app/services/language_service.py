@@ -49,8 +49,8 @@ def detect_language(text: str, default: str = "en") -> str:
         return default
 
     try:
-        # Detectar idioma
-        lang_code = detect(text)
+        # Detect language
+        lang_code = str(detect(text))
         logger.info(f"🌍 Detected language: {lang_code} for text: '{text[:50]}...'")
         return lang_code
     except LangDetectException as e:
