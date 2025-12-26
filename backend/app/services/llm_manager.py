@@ -6,6 +6,7 @@ allowing easy switching between providers via configuration.
 """
 
 import logging
+from typing import cast
 
 from langchain_core.messages import AIMessage, BaseMessage
 
@@ -77,7 +78,7 @@ def invoke_with_fallback_provider(messages: list[BaseMessage]) -> AIMessage:
         llm = get_unified_llm()
         response = llm.invoke(messages)
         logger.info(f"✅ {primary_provider} succeeded")
-        return response
+        return cast(AIMessage, response)
     except Exception as e:
         logger.warning(f"⚠️ {primary_provider} failed: {str(e)}")
 
@@ -95,7 +96,7 @@ def invoke_with_fallback_provider(messages: list[BaseMessage]) -> AIMessage:
             settings.LLM_PROVIDER = original_provider
 
             logger.info(f"✅ {fallback_provider} succeeded (fallback)")
-            return response
+            return cast(AIMessage, response)
         except Exception as fallback_error:
             logger.error(f"❌ {fallback_provider} also failed: {str(fallback_error)}")
 

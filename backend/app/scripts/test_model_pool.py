@@ -130,7 +130,9 @@ async def test_streaming():
                 chunks.append(chunk.content)
                 logger.info(f"Chunk: {chunk.content}")
 
-        full_response = "".join(chunks)
+        # Filter and convert chunks to strings
+        str_chunks = [str(chunk) for chunk in chunks if chunk]
+        full_response = "".join(str_chunks)
         logger.info("\n✅ Streaming successful!")
         logger.info(f"   Total chunks: {len(chunks)}")
         logger.info(f"   Full response: {full_response}")

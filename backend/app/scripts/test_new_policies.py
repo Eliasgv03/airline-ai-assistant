@@ -165,9 +165,11 @@ def test_rag_quality():
     logger.info("SUMMARY")
     logger.info("=" * 80)
 
-    successful_tests = [r for r in results if "error" not in r]
+    successful_tests = [
+        r for r in results if "error" not in r and isinstance(r.get("coverage"), (int, float))
+    ]
     avg_coverage = (
-        sum(r["coverage"] for r in successful_tests) / len(successful_tests)
+        sum(r["coverage"] for r in successful_tests) / len(successful_tests)  # type: ignore[misc]
         if successful_tests
         else 0
     )
@@ -179,19 +181,27 @@ def test_rag_quality():
 
     # Coverage by document
     logger.info("\nCoverage by Document:")
-    for doc in {r["document"] for r in results}:
-        doc_results = [r for r in successful_tests if r["document"] == doc]
+    for doc in {r.get("document", "") for r in results if isinstance(r.get("document"), str)}:
+        doc_results = [r for r in successful_tests if r.get("document") == doc]
         if doc_results:
-            doc_coverage = sum(r["coverage"] for r in doc_results) / len(doc_results)
+            doc_coverage = sum(r["coverage"] for r in doc_results) / len(doc_results)  # type: ignore[misc]
             logger.info(f"  {doc}: {doc_coverage:.1f}%")
 
     # Tests with low coverage
-    low_coverage = [r for r in successful_tests if r["coverage"] < 50]
+    low_coverage = [
+        r
+        for r in successful_tests
+        if isinstance(r.get("coverage"), (int, float))
+        and isinstance(r["coverage"], (int, float))
+        and r["coverage"] < 50
+    ]
     if low_coverage:
         logger.info("\nTests with Low Coverage (<50%):")
         for r in low_coverage:
-            logger.info(f"  - {r['query']} ({r['coverage']:.1f}%)")
-            logger.info(f"    Missing: {', '.join(r['topics_missing'])}")
+            logger.info(f"  - {r.get('query', 'Unknown')} ({r.get('coverage', 0):.1f}%)")
+            missing = r.get("topics_missing", [])
+            if isinstance(missing, list):
+                logger.info(f"    Missing: {', '.join(str(t) for t in missing)}")
 
     logger.info("=" * 80)
     logger.info(f"✅ RAG Quality Test Complete - Average Coverage: {avg_coverage:.1f}%")

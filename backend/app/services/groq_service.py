@@ -65,7 +65,7 @@ def get_groq_llm(
                 model=model,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                groq_api_key=api_key,
+                api_key=api_key,  # type: ignore[call-arg]
                 max_retries=2,
             )
             logger.info(
@@ -112,9 +112,17 @@ def chat_complete_groq(
         response = llm.invoke(messages)
 
         logger.info("Groq completion generated successfully")
-        logger.debug(f"Response length: {len(response.content)} chars")
+        logger.debug(f"Response length: {len(str(response.content))} chars")
 
-        return response.content
+        # Handle response content which can be str or list
+        content = response.content
+        if isinstance(content, str):
+            return content
+        elif isinstance(content, list):
+            # If content is a list, join string elements
+            return " ".join(str(item) for item in content if isinstance(item, str))
+        else:
+            return str(content)
 
     except GroqServiceError:
         # Re-raise our custom errors

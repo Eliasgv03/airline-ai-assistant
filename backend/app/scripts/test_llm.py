@@ -7,6 +7,8 @@ Run with: poetry run python -m app.scripts.test_llm
 
 import sys
 
+from langchain_core.messages import BaseMessage
+
 from app.services.gemini_service import LLMServiceError, chat_complete, create_message
 from app.utils.logger import setup_logging
 
@@ -117,7 +119,7 @@ def test_error_handling():
 
     try:
         # Test with empty messages (should work but might give unexpected response)
-        messages = []
+        messages: list[BaseMessage] = []
         response = chat_complete(messages, temperature=0.3)
         print(f"⚠️  Empty messages handled: {response[:50]}...")
         return True

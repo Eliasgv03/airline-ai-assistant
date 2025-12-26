@@ -5,9 +5,10 @@ This service integrates memory, vector search, and LLM to provide contextual res
 """
 
 import logging
+from typing import cast
 
 from langchain.schema import AIMessage, SystemMessage
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import BaseMessage, ToolMessage
 from langsmith import traceable
 
 from app.core.config import get_settings
@@ -63,7 +64,7 @@ class ChatService:
                 elif provider == "groq":
                     from app.services.groq_service import get_groq_llm
 
-                    llm = get_groq_llm(temperature=0.3, model_name=model_name)
+                    llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
                 else:
                     from app.services.gemini_service import get_llm
 
@@ -74,7 +75,8 @@ class ChatService:
 
                 # Invoke
                 logger.debug(f"Invoking {provider} LLM with model: {model_name}")
-                return llm_with_tools.invoke(messages)
+                response = llm_with_tools.invoke(messages)
+                return cast(AIMessage, response)
             except Exception as e:
                 logger.warning(f"⚠️ {provider} model {model_name} failed: {e}")
                 last_error = e
@@ -134,7 +136,7 @@ class ChatService:
             # Build messages for LLM with language instruction
             system_prompt = get_system_prompt(context)
             system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
-            messages = [SystemMessage(content=system_prompt_with_lang)]
+            messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
 
             # Add conversation history (convert BaseMessage to proper format)
             messages.extend(history)
@@ -151,7 +153,7 @@ class ChatService:
                 logger.info(f"🔧 LLM requested {len(response.tool_calls)} tool calls")
 
                 # Add AI message with tool calls to messages
-                messages.append(response)
+                messages.append(cast(BaseMessage, response))
 
                 # Execute each tool call
                 for tool_call in response.tool_calls:
@@ -162,11 +164,12 @@ class ChatService:
                     # Find and execute the tool
                     tool_output = None
                     for tool in self.tools:
-                        if tool.name == tool_name:
+                        if hasattr(tool, "name") and tool.name == tool_name:
                             try:
-                                tool_output = tool.invoke(tool_args)
-                                logger.info(f"✅ Tool {tool_name} executed successfully")
-                                logger.debug(f"Tool output: {str(tool_output)[:200]}...")
+                                if hasattr(tool, "invoke"):
+                                    tool_output = tool.invoke(tool_args)
+                                    logger.info(f"✅ Tool {tool_name} executed successfully")
+                                    logger.debug(f"Tool output: {str(tool_output)[:200]}...")
                             except Exception as e:
                                 logger.error(f"❌ Tool {tool_name} failed: {str(e)}")
                                 tool_output = f"Error executing tool: {str(e)}"
@@ -188,11 +191,22 @@ class ChatService:
                 logger.info("✅ Direct response (no tools used)")
 
             # Add assistant response to memory
-            self.memory_service.add_message(session_id, "assistant", assistant_response)
+            # Ensure assistant_response is a string
+            assistant_response_str = (
+                assistant_response
+                if isinstance(assistant_response, str)
+                else str(assistant_response)
+            )
+            self.memory_service.add_message(session_id, "assistant", assistant_response_str)
             logger.debug(f"Assistant response: {assistant_response[:100]}...")
 
             logger.info(f"🎉 Message processed successfully for session {session_id}")
-            return assistant_response
+            # Ensure return value is a string
+            return (
+                assistant_response_str
+                if isinstance(assistant_response, str)
+                else str(assistant_response)
+            )
 
         except Exception as e:
             logger.error(f"❌ Error processing message: {str(e)}", exc_info=True)
@@ -235,7 +249,7 @@ class ChatService:
             # Build messages for LLM with language instruction
             system_prompt = get_system_prompt(context)
             system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
-            messages = [SystemMessage(content=system_prompt_with_lang)]
+            messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
             messages.extend(history)
 
             logger.info("💬 Starting streaming response...")
@@ -265,7 +279,7 @@ class ChatService:
                     elif provider == "groq":
                         from app.services.groq_service import get_groq_llm
 
-                        llm = get_groq_llm(temperature=0.3, model_name=model_name)
+                        llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
                     else:
                         llm = get_llm(temperature=0.3, model_name=model_name)
 
@@ -278,8 +292,21 @@ class ChatService:
                         # Extract content from chunk
                         if hasattr(chunk, "content") and chunk.content:
                             content = chunk.content
-                            full_response += content
-                            yield content
+                            # Handle content which can be str or list
+                            if isinstance(content, str):
+                                full_response += content
+                                yield content
+                            elif isinstance(content, list):
+                                # Join string elements
+                                content_str = " ".join(
+                                    str(item) for item in content if isinstance(item, str)
+                                )
+                                full_response += content_str
+                                yield content_str
+                            else:
+                                content_str = str(content)
+                                full_response += content_str
+                                yield content_str
 
                         # Handle tool calls if present
                         if hasattr(chunk, "tool_calls") and chunk.tool_calls:

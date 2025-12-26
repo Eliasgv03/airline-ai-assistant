@@ -7,7 +7,7 @@ It stores messages in-memory and provides TTL-based cleanup.
 
 from datetime import datetime, timedelta
 import logging
-from typing import Any
+from typing import Any, cast
 
 from langchain.memory import ConversationBufferMemory
 from langchain_core.messages import BaseMessage
@@ -59,7 +59,7 @@ class MemoryService:
             # Update last accessed time
             self._sessions[session_id]["last_accessed"] = datetime.now()
 
-        return self._sessions[session_id]["memory"]
+        return cast(ConversationBufferMemory, self._sessions[session_id]["memory"])
 
     def add_message(self, session_id: str, role: str, content: str) -> None:
         """
@@ -102,7 +102,7 @@ class MemoryService:
         messages = memory.chat_memory.messages
 
         logger.debug(f"Retrieved {len(messages)} messages for session {session_id}")
-        return messages
+        return cast(list[BaseMessage], messages)
 
     def clear_session(self, session_id: str) -> None:
         """

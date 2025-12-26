@@ -173,7 +173,7 @@ def test_ttl_cleanup():
         # Create memory service with very short TTL (1 second for testing)
         from app.services.memory_service import MemoryService
 
-        memory_service = MemoryService(ttl_minutes=0.016)  # ~1 second
+        memory_service = MemoryService(ttl_minutes=0)  # ~1 second (0 minutes for immediate cleanup)
 
         session_id = "ttl-test-session"
 

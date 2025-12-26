@@ -66,7 +66,7 @@ def get_llm(
                 max_output_tokens=max_tokens,
                 google_api_key=api_key,
                 max_retries=0,  # Disable automatic retries to control fallback manually
-            )
+            )  # type: ignore[call-arg]
             logger.info(
                 f"✅ LLM initialized successfully: model={model_name}, temperature={temperature}"
             )
@@ -111,9 +111,17 @@ def chat_complete(
         response = llm.invoke(messages)
 
         logger.info("Completion generated successfully")
-        logger.debug(f"Response length: {len(response.content)} chars")
+        logger.debug(f"Response length: {len(str(response.content))} chars")
 
-        return response.content
+        # Handle response content which can be str or list
+        content = response.content
+        if isinstance(content, str):
+            return content
+        elif isinstance(content, list):
+            # If content is a list, join string elements
+            return " ".join(str(item) for item in content if isinstance(item, str))
+        else:
+            return str(content)
 
     except LLMServiceError:
         # Re-raise our custom errors

@@ -6,6 +6,7 @@ Logs all requests with detailed information for debugging.
 
 from collections.abc import Callable
 import time
+from typing import cast
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,7 +53,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 f"→ {response.status_code} ({duration:.2f}ms)"
             )
 
-            return response
+            return cast(Response, response)
 
         except Exception as e:
             duration = (time.time() - start_time) * 1000
