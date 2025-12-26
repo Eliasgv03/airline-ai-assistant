@@ -11,7 +11,7 @@ from langdetect import LangDetectException, detect
 
 logger = logging.getLogger(__name__)
 
-# Mapeo de códigos ISO 639-1 a nombres completos
+# ISO 639-1 language code to full name mapping
 LANGUAGE_NAMES = {
     "en": "English",
     "es": "Spanish",
