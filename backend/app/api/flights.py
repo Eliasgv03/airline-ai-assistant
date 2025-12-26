@@ -11,5 +11,5 @@ async def flights_search_stub(
     destination: str | None = Query(default=None, min_length=3, max_length=3),
     date_: date | None = Query(default=None, alias="date"),
 ):
-    # Stub temporal: no implementado aún
+    # TODO: Implement flight search functionality
     return {"results": [], "note": "Flight search not implemented yet"}

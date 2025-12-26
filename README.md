@@ -113,7 +113,6 @@ This will automatically run code quality checks (ruff, mypy) before each commit.
 ## 📚 Documentation
 
 - [Implementation Plan](docs/implementation_plan.md) - Detailed development roadmap
-- [pgvector Setup Guide](docs/PGVECTOR_SETUP.md) - Database configuration
 - [API Documentation](http://localhost:8000/docs) - OpenAPI/Swagger (when backend is running)
 
 ## 🔄 Migration from FAISS to pgvector

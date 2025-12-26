@@ -37,7 +37,7 @@ amadeus = "^12.0.0"
 pytest = "^8.0.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.23.0"
-ruff = "^0.4.10"
+ruff = "^0.4.10"  # Note: Pre-commit uses v0.14.10, consider updating to match
 mypy = "^1.8.0"
 pre-commit = "^3.6.0"
 
@@ -68,6 +68,7 @@ ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+    "UP038",  # Use X | Y in isinstance - deprecated rule, isinstance requires tuple
 ]
 
 [tool.ruff.lint.per-file-ignores]
