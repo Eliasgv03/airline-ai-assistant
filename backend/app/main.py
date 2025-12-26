@@ -61,20 +61,15 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
-    import asyncio
-
     from app.utils.logger import get_logger
 
     logger = get_logger(__name__)
     logger.info("🚀 Application starting up...")
 
-    # Schedule auto-ingestion in background (non-blocking)
-    # This allows the server to start and bind to port immediately
-    # Critical for Render deployment which has a 60s port binding timeout
-    from app.scripts.auto_ingest import smart_auto_ingest
-
-    asyncio.create_task(smart_auto_ingest())
-    logger.info("📦 Auto-ingestion scheduled in background...")
+    # NOTE: Auto-ingestion disabled for faster startup on Render
+    # The embedding model loading blocks port binding even with async
+    # To ingest data, run locally: poetry run python -m app.scripts.ingest_data
+    # with DATABASE_URL pointing to your Supabase/Render PostgreSQL
 
     logger.info("✅ Application startup complete - server ready to receive requests")
 
