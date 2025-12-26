@@ -61,16 +61,22 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
-    from app.scripts.auto_ingest import smart_auto_ingest
+    import asyncio
+
     from app.utils.logger import get_logger
 
     logger = get_logger(__name__)
     logger.info("🚀 Application starting up...")
 
-    # Run smart auto-ingestion (only if DB is empty)
-    await smart_auto_ingest()
+    # Schedule auto-ingestion in background (non-blocking)
+    # This allows the server to start and bind to port immediately
+    # Critical for Render deployment which has a 60s port binding timeout
+    from app.scripts.auto_ingest import smart_auto_ingest
 
-    logger.info("✅ Application startup complete")
+    asyncio.create_task(smart_auto_ingest())
+    logger.info("📦 Auto-ingestion scheduled in background...")
+
+    logger.info("✅ Application startup complete - server ready to receive requests")
 
 
 @app.get("/health")
