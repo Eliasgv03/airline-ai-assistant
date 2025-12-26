@@ -126,6 +126,15 @@ class MemoryService:
         """
         return len(self._sessions)
 
+    def get_all_session_ids(self) -> list[str]:
+        """
+        Get list of all active session IDs.
+
+        Returns:
+            List of session IDs
+        """
+        return list(self._sessions.keys())
+
     def _cleanup_old_sessions(self) -> None:
         """
         Remove sessions that haven't been accessed within TTL.

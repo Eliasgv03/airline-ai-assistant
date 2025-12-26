@@ -16,15 +16,14 @@ class TestFlightService:
 
     def test_normalize_location(self):
         """Test location normalization"""
-        service = FlightService()
-
-        # Test airport codes
-        assert service._normalize_location("DEL") == "DEL"
-        assert service._normalize_location("del") == "DEL"
-
-        # Test city names (using imported normalize_location)
+        # Test using the imported normalize_location function
         from data.flight_data import normalize_location
 
+        # Test airport codes
+        assert normalize_location("DEL") == "DEL"
+        assert normalize_location("del") == "DEL"
+
+        # Test city names
         assert normalize_location("Delhi") == "DEL"
         assert normalize_location("Mumbai") == "BOM"
 

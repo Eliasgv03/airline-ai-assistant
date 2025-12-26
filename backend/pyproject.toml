@@ -37,7 +37,8 @@ amadeus = "^12.0.0"
 pytest = "^8.0.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.23.0"
-ruff = "^0.4.10"  # Note: Pre-commit uses v0.14.10, consider updating to match
+ruff = "^0.4.10"  # Version mismatch: pre-commit uses v0.14.10, but local is kept at 0.4.10
+# TODO: Update to ^0.14.10 to match pre-commit when breaking changes are addressed
 mypy = "^1.8.0"
 pre-commit = "^3.6.0"
 

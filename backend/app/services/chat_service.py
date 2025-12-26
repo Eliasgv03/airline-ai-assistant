@@ -198,15 +198,11 @@ class ChatService:
                 else str(assistant_response)
             )
             self.memory_service.add_message(session_id, "assistant", assistant_response_str)
-            logger.debug(f"Assistant response: {assistant_response[:100]}...")
+            logger.debug(f"Assistant response: {assistant_response_str[:100]}...")
 
             logger.info(f"🎉 Message processed successfully for session {session_id}")
-            # Ensure return value is a string
-            return (
-                assistant_response_str
-                if isinstance(assistant_response, str)
-                else str(assistant_response)
-            )
+            # Return the already-converted string
+            return assistant_response_str
 
         except Exception as e:
             logger.error(f"❌ Error processing message: {str(e)}", exc_info=True)

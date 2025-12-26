@@ -80,3 +80,19 @@ async def chat_stream(request: ChatRequest, chat_service: ChatService = Depends(
             yield f"data: {error_data}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+@router.get("/sessions")
+async def get_sessions(chat_service: ChatService = Depends(get_chat_service)) -> list[str]:
+    """
+    Get list of active session IDs.
+
+    Returns:
+        List of active session IDs
+    """
+    from app.services.memory_service import get_memory_service
+
+    memory_service = get_memory_service()
+    session_ids = memory_service.get_all_session_ids()
+    logger.info(f"Retrieved {len(session_ids)} active sessions")
+    return session_ids
