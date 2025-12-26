@@ -14,7 +14,7 @@ export interface ChatRequest {
 export interface ChatResponse {
     message: string;
     session_id: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface StreamChunk {

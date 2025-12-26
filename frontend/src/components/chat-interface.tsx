@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { ChatMessage } from "./chat-message"
 import { TypingIndicator } from "./typing-indicator"
 import { FlightCard, type FlightData } from "./flight-card"
-import { Send, Moon, Sun, AlertCircle } from "lucide-react"
+import { Send, Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
-import { sendMessage, sendMessageStream, generateSessionId } from "@/lib/api"
+import { sendMessageStream, generateSessionId } from "@/lib/api"
 
 interface Message {
     id: string
@@ -34,10 +34,11 @@ export function ChatInterface() {
                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             },
         ])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
     const [inputValue, setInputValue] = useState("")
     const [isTyping, setIsTyping] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    // Removed unused error state
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const { theme, setTheme } = useTheme()
 
