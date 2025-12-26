@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
 from app.core.config import get_settings
+from app.middleware.logging import RequestLoggingMiddleware
 from app.utils.logger import setup_logging
 
 # Setup logging
@@ -25,8 +26,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Request Logging Middleware (for debugging)
+app.add_middleware(RequestLoggingMiddleware)
+
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup"""
+    from app.scripts.auto_ingest import smart_auto_ingest
+    from app.utils.logger import get_logger
+
+    logger = get_logger(__name__)
+    logger.info("🚀 Application starting up...")
+
+    # Run smart auto-ingestion (only if DB is empty)
+    await smart_auto_ingest()
+
+    logger.info("✅ Application startup complete")
 
 
 @app.get("/health")

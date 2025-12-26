@@ -3,30 +3,55 @@ services:
   - type: web
     name: airline-ai-assistant-backend
     env: python
+    region: oregon
+    plan: free
     rootDir: backend
     buildCommand: pip install poetry && poetry config virtualenvs.create false && poetry install --only main
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --log-level info
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: DATABASE_URL
-        sync: false # User must provide this in dashboard
+        sync: false # Set in Render dashboard
       - key: GOOGLE_API_KEY
-        sync: false # User must provide this in dashboard
+        sync: false # Set in Render dashboard
+      - key: GROQ_API_KEY
+        sync: false # Set in Render dashboard
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash-lite
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
       - key: ENVIRONMENT
         value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: VECTOR_STORE_COLLECTION_NAME
+        value: air_india_policies
+      - key: EMBEDDING_DIMENSION
+        value: 768
+      - key: USE_REAL_FLIGHT_API
+        value: false
+      - key: LANGSMITH_TRACING
+        value: false
 
   # Frontend Service (Next.js)
   - type: web
     name: airline-ai-assistant-frontend
     env: node
+    region: oregon
+    plan: free
     rootDir: frontend
     buildCommand: npm install --production=false && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_VERSION
         value: 20.9.0
-      - key: NEXT_PUBLIC_API_URL
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_BACKEND_URL
         fromService:
           type: web
           name: airline-ai-assistant-backend
