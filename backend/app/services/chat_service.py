@@ -14,7 +14,9 @@ from langsmith import traceable
 from app.core.config import get_settings
 from app.prompts.system_prompts import get_system_prompt
 from app.services.gemini_service import LLMServiceError, get_llm
+from app.services.groq_service import get_groq_llm
 from app.services.language_service import detect_language, get_language_instruction
+from app.services.llm_manager import invoke_with_fallback_provider
 from app.services.memory_service import get_memory_service
 from app.services.vector_service import get_vector_service
 from app.tools import ALL_TOOLS
@@ -54,8 +56,6 @@ class ChatService:
         1. Try all models in current provider's pool
         2. If all fail, try alternative provider
         """
-        from app.services.llm_manager import invoke_with_fallback_provider
-
         provider = settings.LLM_PROVIDER
         logger.info(f"Using LLM provider: {provider}")
 
@@ -68,31 +68,29 @@ class ChatService:
             model_pool = settings.GEMINI_MODEL_POOL  # Default to Gemini
 
         last_error = None
-        for model_name in model_pool:
+        for idx, model_name in enumerate(model_pool):
             try:
                 # Get LLM for specific model
+                logger.info(f"🔄 Trying model {idx + 1}/{len(model_pool)}: {model_name}")
                 if provider == "gemini":
-                    from app.services.gemini_service import get_llm
-
                     llm = get_llm(temperature=0.3, model_name=model_name)
                 elif provider == "groq":
-                    from app.services.groq_service import get_groq_llm
-
                     llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
                 else:
-                    from app.services.gemini_service import get_llm
-
                     llm = get_llm(temperature=0.3, model_name=model_name)
 
                 # Bind tools
                 llm_with_tools = llm.bind_tools(self.tools)
 
                 # Invoke
-                logger.debug(f"Invoking {provider} LLM with model: {model_name}")
+                logger.info(f"💬 Invoking {provider} LLM with model: {model_name}")
                 response = llm_with_tools.invoke(messages)
+                logger.info(f"✅ Model {model_name} succeeded!")
                 return cast(AIMessage, response)
             except Exception as e:
-                logger.warning(f"⚠️ {provider} model {model_name} failed: {e}")
+                error_type = type(e).__name__
+                logger.warning(f"⚠️ Model {model_name} failed ({error_type}): {str(e)[:100]}")
+                logger.info("🔄 Falling back to next model in pool...")
                 last_error = e
                 continue
 
@@ -295,8 +293,6 @@ class ChatService:
                     if provider == "gemini":
                         llm = get_llm(temperature=0.3, model_name=model_name)
                     elif provider == "groq":
-                        from app.services.groq_service import get_groq_llm
-
                         llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
                     else:
                         llm = get_llm(temperature=0.3, model_name=model_name)

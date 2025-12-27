@@ -11,13 +11,21 @@ Generates a comprehensive report with metrics and recommendations.
 """
 
 import json
+import os
 from pathlib import Path
 import time
+
+# Force Gemini provider for benchmarks
+os.environ["LLM_PROVIDER"] = "gemini"
 
 from app.services.chat_service import ChatService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Rate limiting configuration (Gemini free tier has strict limits)
+DELAY_BETWEEN_TESTS_SEC = 15  # Wait 15 seconds between individual tests
+DELAY_BETWEEN_GROUPS_SEC = 45  # Wait 45 seconds between test groups
 
 # Benchmark test cases organized by category
 BENCHMARK_TESTS = {
@@ -250,14 +258,26 @@ def run_benchmarks():
     metrics = BenchmarkMetrics()
 
     # Run all tests
-    for test_group, tests in BENCHMARK_TESTS.items():
+    test_groups = list(BENCHMARK_TESTS.items())
+    for group_idx, (test_group, tests) in enumerate(test_groups):
         logger.info(f"\n{'=' * 80}")
-        logger.info(f"📋 Test Group: {test_group.upper()}")
+        logger.info(f"📋 Test Group: {test_group.upper()} ({group_idx + 1}/{len(test_groups)})")
         logger.info("=" * 80)
 
-        for test_case in tests:
+        for i, test_case in enumerate(tests):
             result = run_benchmark_test(chat_service, session_id, test_case)
             metrics.add_result(result)
+            # Rate limiting: wait between tests to avoid API quota issues
+            if i < len(tests) - 1:
+                logger.info(f"⏳ Waiting {DELAY_BETWEEN_TESTS_SEC}s before next test...")
+                time.sleep(DELAY_BETWEEN_TESTS_SEC)
+
+        # Longer wait between test groups
+        if group_idx < len(test_groups) - 1:
+            logger.info(
+                f"\n🔄 Group complete. Waiting {DELAY_BETWEEN_GROUPS_SEC}s before next group..."
+            )
+            time.sleep(DELAY_BETWEEN_GROUPS_SEC)
 
     # Generate summary
     summary = metrics.get_summary()

@@ -74,7 +74,8 @@ def get_llm(
                     temperature=temperature,
                     max_output_tokens=max_tokens,
                     google_api_key=api_key,  # type: ignore[arg-type]
-                    max_retries=0,
+                    max_retries=0,  # Disable internal retries - let our fallback handle it
+                    timeout=30,  # 30 second timeout per request
                 )  # type: ignore
                 logger.info(f"✅ LLM initialized: {key_name}, model={model}")
                 return llm
