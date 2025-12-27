@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Plane, User } from "lucide-react"
+import ReactMarkdown from "react-markdown"
 
 interface ChatMessageProps {
     message: string
@@ -11,6 +12,11 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, isUser, timestamp }: ChatMessageProps) {
+    // Don't render empty messages
+    if (!message || message.trim() === "") {
+        return null
+    }
+
     return (
         <div
             className={cn(
@@ -33,7 +39,18 @@ export function ChatMessage({ message, isUser, timestamp }: ChatMessageProps) {
                             : "bg-card border border-border text-card-foreground rounded-tl-sm",
                     )}
                 >
-                    <p className="leading-relaxed">{message}</p>
+                    {isUser ? (
+                        <p className="leading-relaxed">{message}</p>
+                    ) : (
+                        <div className="leading-relaxed prose prose-sm dark:prose-invert max-w-none
+                            prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5
+                            prose-headings:my-2 prose-headings:font-semibold
+                            prose-strong:text-foreground prose-code:text-sm
+                            prose-pre:bg-muted prose-pre:p-2 prose-pre:rounded
+                            [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+                            <ReactMarkdown>{message}</ReactMarkdown>
+                        </div>
+                    )}
                 </div>
 
                 {timestamp && <span className="text-xs text-muted-foreground px-1">{timestamp}</span>}
