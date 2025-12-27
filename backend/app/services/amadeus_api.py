@@ -6,24 +6,26 @@ real-time flight data with automatic fallback to mock data.
 """
 
 from datetime import datetime, timedelta
-import os
 
 from amadeus import Client, ResponseError
 
+from app.core.config import get_settings
 from app.models.flight import Flight
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+settings = get_settings()
 
 
 class AmadeusFlightAPI:
     """Amadeus Flight API client with authentication and search capabilities"""
 
     def __init__(self):
-        self.api_key = os.getenv("AMADEUS_API_KEY")
-        self.api_secret = os.getenv("AMADEUS_API_SECRET")
-        self.use_test_env = os.getenv("AMADEUS_USE_TEST", "true").lower() == "true"
-        self.timeout = int(os.getenv("FLIGHT_API_TIMEOUT", "5"))
+        # Use pydantic settings (properly loads .env)
+        self.api_key = settings.AMADEUS_API_KEY
+        self.api_secret = settings.AMADEUS_API_SECRET
+        self.use_test_env = settings.AMADEUS_USE_TEST
+        self.timeout = settings.FLIGHT_API_TIMEOUT
 
         self.client: Client | None = None
         self._initialize_client()

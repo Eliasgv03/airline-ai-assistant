@@ -107,6 +107,25 @@ class Settings(BaseSettings):
     VECTOR_STORE_COLLECTION_NAME: str = "air_india_policies"
     EMBEDDING_DIMENSION: int = 384
 
+    # ========================================
+    # Amadeus Flight API Configuration
+    # ========================================
+    AMADEUS_API_KEY: str | None = None
+    AMADEUS_API_SECRET: str | None = None
+    AMADEUS_USE_TEST: bool = True  # Use test environment by default
+    USE_REAL_FLIGHT_API: bool = True  # Enable real API calls
+    FLIGHT_API_TIMEOUT: int = 5  # Timeout in seconds
+
+    @property
+    def is_amadeus_configured(self) -> bool:
+        """Check if Amadeus API is properly configured"""
+        return (
+            self.AMADEUS_API_KEY is not None
+            and self.AMADEUS_API_SECRET is not None
+            and len(self.AMADEUS_API_KEY) > 0
+            and len(self.AMADEUS_API_SECRET) > 0
+        )
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
