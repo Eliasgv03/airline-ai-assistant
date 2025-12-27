@@ -57,19 +57,51 @@ app.add_middleware(RequestLoggingMiddleware)
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+# Global state for tracking model loading
+_model_loading_status = {"started": False, "completed": False, "error": None}
+
+
+def _preload_vector_service():
+    """
+    Pre-load the VectorService (embedding model) in a background thread.
+    This allows the server to start immediately and handle health checks
+    while the model loads in the background.
+    """
+    from app.utils.logger import get_logger
+
+    logger = get_logger(__name__)
+
+    global _model_loading_status
+    _model_loading_status["started"] = True
+
+    try:
+        logger.info("🔄 Background thread: Starting VectorService pre-load...")
+        from app.services.vector_service import get_vector_service
+
+        get_vector_service()
+        _model_loading_status["completed"] = True
+        logger.info("✅ Background thread: VectorService pre-loaded successfully!")
+    except Exception as e:
+        _model_loading_status["error"] = str(e)
+        logger.error(f"❌ Background thread: Failed to pre-load VectorService: {e}")
+
 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
+    import threading
+
     from app.utils.logger import get_logger
 
     logger = get_logger(__name__)
     logger.info("🚀 Application starting up...")
 
-    # NOTE: Auto-ingestion disabled for faster startup on Render
-    # The embedding model loading blocks port binding even with async
-    # To ingest data, run locally: poetry run python -m app.scripts.ingest_data
-    # with DATABASE_URL pointing to your Supabase/Render PostgreSQL
+    # Start pre-loading the embedding model in a background thread
+    # This allows the server to bind to the port immediately (passing health checks)
+    # while the model loads asynchronously
+    preload_thread = threading.Thread(target=_preload_vector_service, daemon=True)
+    preload_thread.start()
+    logger.info("🔄 VectorService pre-load started in background thread")
 
     logger.info("✅ Application startup complete - server ready to receive requests")
 
@@ -77,6 +109,37 @@ async def startup_event():
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "environment": settings.ENVIRONMENT}
+
+
+@app.get("/ready")
+async def readiness_check():
+    """
+    Readiness endpoint that checks if the embedding model is loaded.
+    Returns 503 if still loading, 200 if ready.
+    """
+    from fastapi.responses import JSONResponse
+
+    if _model_loading_status["error"]:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "message": "Model loading failed",
+                "error": _model_loading_status["error"],
+            },
+        )
+
+    if not _model_loading_status["completed"]:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "loading",
+                "message": "Embedding model is still loading. Please wait...",
+                "started": _model_loading_status["started"],
+            },
+        )
+
+    return {"status": "ready", "message": "All services ready", "model_loaded": True}
 
 
 @app.get("/")

@@ -5,6 +5,7 @@ This service integrates memory, vector search, and LLM to provide contextual res
 """
 
 import logging
+import time
 from typing import cast
 
 from langchain.schema import AIMessage, SystemMessage
@@ -23,12 +24,43 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
+def wait_for_vector_service(max_wait_seconds: int = 120) -> None:
+    """
+    Wait for the VectorService to be ready (embedding model loaded).
+    This is needed because the model is loaded in a background thread at startup.
+    """
+    from app.main import _model_loading_status
+
+    start_time = time.time()
+    check_interval = 0.5  # Check every 500ms
+
+    while time.time() - start_time < max_wait_seconds:
+        if _model_loading_status["completed"]:
+            logger.info("✅ VectorService is ready")
+            return
+
+        if _model_loading_status["error"]:
+            raise RuntimeError(f"VectorService failed to load: {_model_loading_status['error']}")
+
+        elapsed = int(time.time() - start_time)
+        if elapsed > 0 and elapsed % 10 == 0:  # Log every 10 seconds
+            logger.info(f"⏳ Waiting for VectorService... ({elapsed}s elapsed)")
+
+        time.sleep(check_interval)
+
+    raise TimeoutError(f"VectorService did not become ready within {max_wait_seconds} seconds")
+
+
 class ChatService:
     """Service for handling chat interactions with RAG and tool support"""
 
     def __init__(self):
         self.memory_service = get_memory_service()
+
+        # Wait for vector service to be ready (model loaded in background thread)
+        wait_for_vector_service()
         self.vector_service = get_vector_service()  # Use singleton - model loaded once
+
         self.tools = ALL_TOOLS
         self._session_languages: dict[str, str] = {}  # Track language per session
         logger.info(f"ChatService initialized with RAG support and {len(self.tools)} tools")
