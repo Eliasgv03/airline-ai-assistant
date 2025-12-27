@@ -131,7 +131,7 @@ search_flights = StructuredTool.from_function(
         "Use when users ask about flight schedules, times, availability, or prices. "
         "IMPORTANT: Convert natural language dates to YYYY-MM-DD format."
     ),
-    args_schema=FlightSearchInput,
+    args_schema=FlightSearchInput,  # type: ignore[arg-type]
 )
 
 get_flight_details = StructuredTool.from_function(
@@ -141,7 +141,7 @@ get_flight_details = StructuredTool.from_function(
         "Get detailed information about a specific Air India flight by flight number. "
         "Use when users ask about a specific flight like 'AI 865'."
     ),
-    args_schema=FlightDetailsInput,
+    args_schema=FlightDetailsInput,  # type: ignore[arg-type]
 )
 
 
