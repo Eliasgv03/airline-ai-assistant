@@ -23,24 +23,13 @@ interface Message {
 export function ChatInterface() {
     const [sessionId] = useState(() => generateSessionId())
     const [messages, setMessages] = useState<Message[]>([])
-
-    // Add welcome message on mount to avoid hydration mismatch (timestamp)
-    useEffect(() => {
-        setMessages([
-            {
-                id: "1",
-                content: "Welcome to Air India! I'm your virtual assistant. How can I help you today? You can ask me about flights, bookings, or any travel-related queries.",
-                isUser: false,
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            },
-        ])
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
     const [inputValue, setInputValue] = useState("")
     const [isTyping, setIsTyping] = useState(false)
-    // Removed unused error state
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const { theme, setTheme } = useTheme()
+
+    // Determine if we should show welcome screen (no messages yet)
+    const showWelcomeScreen = messages.length === 0
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -64,7 +53,6 @@ export function ChatInterface() {
         const currentInput = inputValue
         setInputValue("")
         setIsTyping(true)
-
 
         // Create placeholder message for streaming response
         const assistantMessageId = (Date.now() + 1).toString()
@@ -162,54 +150,125 @@ export function ChatInterface() {
                 </div>
             </header>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
-                <div className="max-w-4xl mx-auto">
-                    {messages.map((message) => (
-                        <div key={message.id}>
-                            {message.flight ? (
-                                <div className="mb-4 flex justify-start">
-                                    <div className="max-w-[90%] md:max-w-[80%]">
-                                        <FlightCard flight={message.flight} />
-                                    </div>
-                                </div>
-                            ) : (
-                                <ChatMessage message={message.content} isUser={message.isUser} timestamp={message.timestamp} />
-                            )}
+            {showWelcomeScreen ? (
+                // Welcome Screen - Centered
+                <div className="flex-1 flex flex-col items-center justify-center px-4 md:px-6">
+                    <div className="max-w-2xl w-full text-center space-y-6">
+                        {/* Air India Logo */}
+                        <div className="flex justify-center">
+                            <div className="h-20 w-20 rounded-full bg-air-india-orange flex items-center justify-center shadow-lg">
+                                <svg viewBox="0 0 24 24" className="h-12 w-12 text-white" fill="currentColor">
+                                    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+                                </svg>
+                            </div>
                         </div>
-                    ))}
 
-                    {isTyping && <TypingIndicator />}
-                    <div ref={messagesEndRef} />
-                </div>
-            </div>
+                        {/* Welcome Message */}
+                        <div className="space-y-3">
+                            <h2 className="text-3xl md:text-4xl font-bold text-foreground">Welcome to Air India</h2>
+                            <p className="text-lg md:text-xl text-muted-foreground">
+                                Your virtual travel assistant is here to help
+                            </p>
+                        </div>
 
-            {/* Input */}
-            <div className="border-t border-border bg-card shadow-lg sticky bottom-0">
-                <div className="max-w-4xl mx-auto px-4 md:px-6 py-4">
-                    <div className="flex gap-2 md:gap-3">
-                        <Input
-                            value={inputValue}
-                            onChange={(e) => setInputValue(e.target.value)}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Type your message..."
-                            className="flex-1 text-sm md:text-base"
-                        />
-                        <Button
-                            onClick={handleSendMessage}
-                            size="icon"
-                            className="shrink-0 bg-air-india-orange hover:bg-air-india-orange/90 text-white"
-                            disabled={!inputValue.trim()}
-                        >
-                            <Send className="h-4 w-4 md:h-5 md:w-5" />
-                            <span className="sr-only">Send message</span>
-                        </Button>
+                        {/* Feature Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+                            <div className="bg-card border border-border rounded-lg p-4 text-center hover:border-air-india-orange transition-colors">
+                                <div className="text-2xl mb-2">✈️</div>
+                                <p className="text-sm font-medium text-foreground">Flight Search</p>
+                                <p className="text-xs text-muted-foreground mt-1">Find the best flights</p>
+                            </div>
+                            <div className="bg-card border border-border rounded-lg p-4 text-center hover:border-air-india-orange transition-colors">
+                                <div className="text-2xl mb-2">🧳</div>
+                                <p className="text-sm font-medium text-foreground">Baggage Info</p>
+                                <p className="text-xs text-muted-foreground mt-1">Policies & allowances</p>
+                            </div>
+                            <div className="bg-card border border-border rounded-lg p-4 text-center hover:border-air-india-orange transition-colors">
+                                <div className="text-2xl mb-2">💬</div>
+                                <p className="text-sm font-medium text-foreground">24/7 Support</p>
+                                <p className="text-xs text-muted-foreground mt-1">Always here to help</p>
+                            </div>
+                        </div>
+
+                        {/* Input - Centered on Welcome Screen */}
+                        <div className="max-w-2xl w-full mt-8">
+                            <div className="flex gap-2 md:gap-3">
+                                <Input
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Ask me anything about your travel..."
+                                    className="flex-1 text-sm md:text-base h-12"
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    size="icon"
+                                    className="shrink-0 h-12 w-12 bg-air-india-orange hover:bg-air-india-orange/90 text-white"
+                                    disabled={!inputValue.trim() || isTyping}
+                                >
+                                    <Send className="h-5 w-5" />
+                                    <span className="sr-only">Send message</span>
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-3 text-center">
+                                Try asking: &quot;Find flights from Delhi to Mumbai&quot; or &quot;What&apos;s the baggage allowance?&quot;
+                            </p>
+                        </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                        Press Enter to send • Air India Virtual Assistant
-                    </p>
                 </div>
-            </div>
+            ) : (
+                // Chat Messages - Normal Layout
+                <>
+                    <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
+                        <div className="max-w-4xl mx-auto">
+                            {messages.map((message) => (
+                                <div key={message.id}>
+                                    {message.flight ? (
+                                        <div className="mb-4 flex justify-start">
+                                            <div className="max-w-[90%] md:max-w-[80%]">
+                                                <FlightCard flight={message.flight} />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <ChatMessage message={message.content} isUser={message.isUser} timestamp={message.timestamp} />
+                                    )}
+                                </div>
+                            ))}
+
+                            {isTyping && <TypingIndicator />}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </div>
+
+                    {/* Input - Bottom Position During Chat */}
+                    <div className="border-t border-border bg-card shadow-lg sticky bottom-0">
+                        <div className="max-w-4xl mx-auto px-4 md:px-6 py-4">
+                            <div className="flex gap-2 md:gap-3">
+                                <Input
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Type your message..."
+                                    className="flex-1 text-sm md:text-base"
+                                    disabled={isTyping}
+                                />
+                                <Button
+                                    onClick={handleSendMessage}
+                                    size="icon"
+                                    className="shrink-0 bg-air-india-orange hover:bg-air-india-orange/90 text-white"
+                                    disabled={!inputValue.trim() || isTyping}
+                                >
+                                    <Send className="h-4 w-4 md:h-5 md:w-5" />
+                                    <span className="sr-only">Send message</span>
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 text-center">
+                                Press Enter to send • Air India Virtual Assistant
+                            </p>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }
