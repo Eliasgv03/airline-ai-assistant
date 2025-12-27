@@ -166,7 +166,7 @@ def test_rag_quality():
     logger.info("=" * 80)
 
     successful_tests = [
-        r for r in results if "error" not in r and isinstance(r.get("coverage"), (int, float))
+        r for r in results if "error" not in r and isinstance(r.get("coverage"), int | float)
     ]
     avg_coverage = (
         sum(r["coverage"] for r in successful_tests) / len(successful_tests)  # type: ignore[misc]
@@ -191,8 +191,8 @@ def test_rag_quality():
     low_coverage = [
         r
         for r in successful_tests
-        if isinstance(r.get("coverage"), (int, float))
-        and isinstance(r["coverage"], (int, float))
+        if isinstance(r.get("coverage"), int | float)
+        and isinstance(r["coverage"], int | float)
         and r["coverage"] < 50
     ]
     if low_coverage:

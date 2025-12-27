@@ -18,8 +18,8 @@ import time
 # Force Gemini provider for benchmarks
 os.environ["LLM_PROVIDER"] = "gemini"
 
-from app.services.chat_service import ChatService
-from app.utils.logger import get_logger
+from app.services.chat_service import ChatService  # noqa: E402
+from app.utils.logger import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

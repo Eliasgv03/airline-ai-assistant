@@ -207,7 +207,7 @@ EOF
 poetry run uvicorn app.main:app --reload
 ```
 
-Server will be running at: `http://localhost:8000`  
+Server will be running at: `http://localhost:8000`
 Docs available at: `http://localhost:8000/docs`
 
 ### 4. Frontend Setup
