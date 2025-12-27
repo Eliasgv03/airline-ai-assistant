@@ -11,6 +11,11 @@ const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || // Fallback for old variable name
     'http://localhost:8000';
 
+// Timeout configuration (in milliseconds)
+// Higher timeout to account for cold starts and embedding model loading
+const API_TIMEOUT_MS = 120000; // 2 minutes
+const STREAM_TIMEOUT_MS = 180000; // 3 minutes for streaming (model may need to load)
+
 // Validate API_BASE_URL
 if (typeof window !== 'undefined' && !API_BASE_URL) {
     console.warn('⚠️ NEXT_PUBLIC_BACKEND_URL is not set. Using default: http://localhost:8000');
@@ -51,6 +56,7 @@ export async function sendMessage(
                 session_id: sessionId,
                 message: message,
             } as ChatRequest),
+            signal: AbortSignal.timeout(API_TIMEOUT_MS),
         });
 
         if (!response.ok) {
@@ -96,6 +102,7 @@ export async function sendMessageStream(
                 session_id: sessionId,
                 message: message,
             } as ChatRequest),
+            signal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
         });
 
         if (!response.ok) {
@@ -159,8 +166,8 @@ export async function sendMessageStream(
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";
         const isNetworkError = errorMessage.includes('Failed to fetch') ||
-                               errorMessage.includes('NetworkError') ||
-                               errorMessage.includes('Network request failed');
+            errorMessage.includes('NetworkError') ||
+            errorMessage.includes('Network request failed');
 
         console.error("Streaming API Error:", {
             message: errorMessage,
