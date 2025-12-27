@@ -5,15 +5,21 @@ This module contains realistic Air India flight data for demonstration purposes.
 Structure is designed to be easily replaceable with real API data.
 """
 
-# Airport code mappings
+# Airport code mappings (includes common aliases and multilingual names)
 AIRPORT_CODES = {
-    # Indian cities
+    # Indian cities - with aliases
     "delhi": "DEL",
+    "new delhi": "DEL",
+    "nueva delhi": "DEL",  # Spanish
+    "neu-delhi": "DEL",  # German
     "mumbai": "BOM",
+    "bombay": "BOM",  # Old name
     "bangalore": "BLR",
     "bengaluru": "BLR",
     "chennai": "MAA",
+    "madras": "MAA",  # Old name
     "kolkata": "CCU",
+    "calcutta": "CCU",  # Old name
     "hyderabad": "HYD",
     "goa": "GOI",
     "pune": "PNQ",
@@ -21,14 +27,20 @@ AIRPORT_CODES = {
     "jaipur": "JAI",
     "kochi": "COK",
     "cochin": "COK",
-    # International cities
+    # International cities - with aliases
     "london": "LHR",
+    "londres": "LHR",  # Spanish
     "new york": "JFK",
+    "nueva york": "JFK",  # Spanish
     "dubai": "DXB",
+    "dubái": "DXB",  # Spanish
     "singapore": "SIN",
+    "singapur": "SIN",  # Spanish
     "paris": "CDG",
+    "parís": "CDG",  # Spanish
     "frankfurt": "FRA",
     "tokyo": "NRT",
+    "tokio": "NRT",  # Spanish
     "bangkok": "BKK",
 }
 

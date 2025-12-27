@@ -16,7 +16,7 @@ from app.prompts.system_prompts import get_system_prompt
 from app.services.gemini_service import LLMServiceError, get_llm
 from app.services.language_service import detect_language, get_language_instruction
 from app.services.memory_service import get_memory_service
-from app.services.vector_service import VectorService
+from app.services.vector_service import get_vector_service
 from app.tools import ALL_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -28,8 +28,9 @@ class ChatService:
 
     def __init__(self):
         self.memory_service = get_memory_service()
-        self.vector_service = VectorService()
+        self.vector_service = get_vector_service()  # Use singleton - model loaded once
         self.tools = ALL_TOOLS
+        self._session_languages: dict[str, str] = {}  # Track language per session
         logger.info(f"ChatService initialized with RAG support and {len(self.tools)} tools")
 
     def _invoke_with_fallback(self, messages) -> AIMessage:
@@ -211,21 +212,17 @@ class ChatService:
     @traceable(run_type="chain", name="process_message_stream")
     async def process_message_stream(self, session_id: str, user_message: str):
         """
-        Process a user message and stream assistant response in chunks
-
-        Args:
-            session_id: Unique session identifier
-            user_message: User's input message
-
-        Yields:
-            Response chunks as they are generated
+        Process a user message and stream assistant response in chunks.
+        Handles tool calls properly by executing them and streaming final results.
         """
         try:
             logger.info(f"🔵 Processing streaming message for session {session_id}")
             logger.debug(f"User message: {user_message[:100]}...")
 
-            # 🌍 Detect user's language
-            detected_lang = detect_language(user_message)
+            # 🌍 Detect user's language with session persistence
+            session_lang = self._session_languages.get(session_id)
+            detected_lang = detect_language(user_message, session_hint=session_lang)
+            self._session_languages[session_id] = detected_lang
             lang_instruction = get_language_instruction(detected_lang)
             logger.info(f"🌍 Detected language: {detected_lang}")
 
@@ -263,9 +260,9 @@ class ChatService:
                 model_pool = settings.GEMINI_MODEL_POOL
                 provider = "gemini"
 
-            # Try each model in the pool
             last_error = None
             full_response = ""
+            tool_calls_collected: list = []
 
             for model_name in model_pool:
                 try:
@@ -280,40 +277,93 @@ class ChatService:
                         llm = get_llm(temperature=0.3, model_name=model_name)
 
                     llm_with_tools = llm.bind_tools(self.tools)
-
                     logger.debug(f"Streaming with {provider} model: {model_name}")
 
-                    # Stream the response
+                    # First pass: Stream initial response and collect tool calls
                     async for chunk in llm_with_tools.astream(messages):
                         # Extract content from chunk
                         if hasattr(chunk, "content") and chunk.content:
                             content = chunk.content
-                            # Handle content which can be str or list
                             if isinstance(content, str):
                                 full_response += content
                                 yield content
                             elif isinstance(content, list):
-                                # Join string elements
                                 content_str = " ".join(
                                     str(item) for item in content if isinstance(item, str)
                                 )
                                 full_response += content_str
                                 yield content_str
-                            else:
-                                content_str = str(content)
-                                full_response += content_str
-                                yield content_str
 
-                        # Handle tool calls if present
+                        # Collect tool calls (don't yield ugly message)
                         if hasattr(chunk, "tool_calls") and chunk.tool_calls:
-                            logger.info(
-                                f"🔧 Tool calls detected in stream: {len(chunk.tool_calls)}"
-                            )
-                            # For now, we'll handle tools in non-streaming mode
-                            # This is a simplification - full implementation would stream tool results too
-                            yield "\n\n[Processing tool request...]\n\n"
+                            tool_calls_collected.extend(chunk.tool_calls)
+                            logger.info(f"🔧 Collected {len(chunk.tool_calls)} tool calls")
 
-                    # If we got here, streaming succeeded
+                    # If we have tool calls, execute them and get final response
+                    if tool_calls_collected:
+                        logger.info(f"🔧 Executing {len(tool_calls_collected)} tool calls...")
+
+                        # Yield a nice status indicator
+                        yield "\n\n🔍 *Searching flights...*\n\n"
+
+                        # Build tool response messages
+                        from langchain.schema import AIMessage
+                        from langchain_core.messages import ToolMessage
+
+                        # Create AI message with tool calls
+                        ai_message = AIMessage(
+                            content=full_response, tool_calls=tool_calls_collected
+                        )
+                        messages.append(cast(BaseMessage, ai_message))
+
+                        # Execute each tool
+                        for tool_call in tool_calls_collected:
+                            tool_name = tool_call.get("name", "")
+                            tool_args = tool_call.get("args", {})
+                            tool_id = tool_call.get("id", "")
+
+                            logger.info(f"⚙️ Executing tool: {tool_name}")
+                            tool_output = None
+
+                            for tool in self.tools:
+                                if hasattr(tool, "name") and tool.name == tool_name:
+                                    try:
+                                        # Use ainvoke for async tools
+                                        if hasattr(tool, "ainvoke"):
+                                            tool_output = await tool.ainvoke(tool_args)
+                                        elif hasattr(tool, "invoke"):
+                                            tool_output = tool.invoke(tool_args)
+                                        logger.info(f"✅ Tool {tool_name} executed")
+                                    except Exception as e:
+                                        logger.error(f"❌ Tool {tool_name} failed: {e}")
+                                        tool_output = f"Error: {str(e)}"
+                                    break
+
+                            # Add tool result
+                            messages.append(
+                                ToolMessage(
+                                    content=str(tool_output) if tool_output else "No results found",
+                                    tool_call_id=tool_id,
+                                )
+                            )
+
+                        # Get final response with tool results
+                        logger.info("💬 Getting final response with tool results...")
+                        full_response = ""  # Reset for final response
+
+                        async for chunk in llm_with_tools.astream(messages):
+                            if hasattr(chunk, "content") and chunk.content:
+                                content = chunk.content
+                                if isinstance(content, str):
+                                    full_response += content
+                                    yield content
+                                elif isinstance(content, list):
+                                    content_str = " ".join(
+                                        str(item) for item in content if isinstance(item, str)
+                                    )
+                                    full_response += content_str
+                                    yield content_str
+
                     logger.info(f"✅ Streaming completed with {provider} model: {model_name}")
                     break
 
@@ -326,9 +376,9 @@ class ChatService:
             if not full_response:
                 error_msg = f"All {provider} models failed. Last error: {last_error}"
                 logger.error(f"❌ {error_msg}")
-                yield "\n\nI apologize, but I'm experiencing technical difficulties with all available models. Please try again in a moment.\n\n"
+                yield "\n\nI apologize, but I'm experiencing technical difficulties. Please try again.\n\n"
 
-            # Add complete response to memory (if we got any response)
+            # Add complete response to memory
             if full_response:
                 self.memory_service.add_message(session_id, "assistant", full_response)
                 logger.info(f"🎉 Streaming message processed successfully for session {session_id}")

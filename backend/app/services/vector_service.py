@@ -104,3 +104,22 @@ class VectorService:
     def as_retriever(self):
         """Returns the vector store as a retriever interface."""
         return self.vector_store.as_retriever()
+
+
+# Singleton instance - ensures embedding model is loaded only once
+_vector_service: VectorService | None = None
+
+
+def get_vector_service() -> VectorService:
+    """
+    Get the global VectorService instance (singleton).
+
+    This is critical for production: the embedding model takes ~70 seconds
+    to load, so we only want to load it once, not on every request.
+    """
+    global _vector_service
+    if _vector_service is None:
+        logger.info("🚀 Creating global VectorService singleton...")
+        _vector_service = VectorService()
+        logger.info("✅ VectorService singleton created")
+    return _vector_service
