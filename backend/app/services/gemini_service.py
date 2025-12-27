@@ -47,37 +47,44 @@ def get_llm(
         os.environ["LANGSMITH_ENDPOINT"] = settings.LANGSMITH_ENDPOINT
         logger.info("🔍 LangSmith tracing enabled for Gemini")
 
-    if not settings.GOOGLE_API_KEY:
-        raise LLMServiceError("GOOGLE_API_KEY is not configured.")
+    # Build list of available API keys (fallback chain)
+    api_keys: list[tuple[str, str]] = []  # (key, description)
 
-    api_key = settings.GOOGLE_API_KEY.strip()
+    if settings.GOOGLE_API_KEY:
+        api_keys.append((settings.GOOGLE_API_KEY.strip(), "GOOGLE_API_KEY"))
+    if settings.GOOGLE_FALLBACK_API_KEY:
+        api_keys.append((settings.GOOGLE_FALLBACK_API_KEY.strip(), "GOOGLE_FALLBACK_API_KEY"))
+
+    if not api_keys:
+        raise LLMServiceError(
+            "No Google API key configured. Set GOOGLE_API_KEY or GOOGLE_FALLBACK_API_KEY."
+        )
 
     # Determine which models to try
     models_to_try = [model_name] if model_name else settings.GEMINI_MODEL_POOL
 
-    # Try each model in the pool
-    last_error = None
-    for model in models_to_try:
-        try:
-            logger.info(f"Attempting to initialize LLM with model: {model}")
-            llm = ChatGoogleGenerativeAI(
-                model=model,
-                temperature=temperature,
-                max_output_tokens=max_tokens,
-                google_api_key=api_key,
-                max_retries=0,  # Disable automatic retries to control fallback manually
-            )  # type: ignore[call-arg]
-            logger.info(
-                f"✅ LLM initialized successfully: model={model_name}, temperature={temperature}"
-            )
-            return llm
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to initialize model {model_name}: {str(e)}")
-            last_error = e
-            continue  # Try next model in pool
+    # Try each API key, and for each key try each model
+    last_error: Exception | None = None
+    for api_key, key_name in api_keys:
+        for model in models_to_try:
+            try:
+                logger.info(f"Attempting LLM init: {key_name} with model {model}")
+                llm = ChatGoogleGenerativeAI(
+                    model=model,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                    google_api_key=api_key,  # type: ignore[arg-type]
+                    max_retries=0,
+                )  # type: ignore
+                logger.info(f"✅ LLM initialized: {key_name}, model={model}")
+                return llm
+            except Exception as e:
+                logger.warning(f"⚠️ {key_name} + model {model} failed: {str(e)}")
+                last_error = e
+                continue  # Try next model or key
 
-    # If all models failed
-    error_msg = f"All models in pool failed. Last error: {str(last_error)}"
+    # If all keys and models failed
+    error_msg = f"All API keys and models failed. Last error: {str(last_error)}"
     logger.error(error_msg)
     raise LLMServiceError(error_msg) from last_error
 

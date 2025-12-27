@@ -29,14 +29,13 @@ class TestChatAPI:
         data = response.json()
         assert data["status"] == "ok"
 
-    def test_ready_endpoint_during_loading(self, client: TestClient):
-        """Test ready endpoint returns appropriate status"""
+    def test_ready_endpoint(self, client: TestClient):
+        """Test ready endpoint - always ready with Google Embeddings API"""
         response = client.get("/ready")
-        # During tests, model may or may not be loaded
-        # Should return 200 (ready) or 503 (loading/error)
-        assert response.status_code in [200, 503]
+        # With Google Embeddings API, service is always immediately ready
+        assert response.status_code == 200
         data = response.json()
-        assert "status" in data
+        assert data["status"] == "ready"
 
     @pytest.mark.slow
     def test_chat_endpoint_structure(self, client: TestClient):

@@ -10,7 +10,6 @@ This module handles the RAG (Retrieval-Augmented Generation) pipeline:
 
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGVector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -24,38 +23,50 @@ logger = get_logger(__name__)
 
 class VectorService:
     def __init__(self):
-        import sys
-        import time
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-        # Using a local, lightweight embedding model (384 dimensions)
         logger.info("Initializing VectorService...")
-        logger.info("Loading embedding model (all-MiniLM-L6-v2)... This may take a moment.")
-        # Flush stdout to ensure logs appear in Render
-        sys.stdout.flush()
-        sys.stderr.flush()
 
-        start_time = time.time()
-        try:
-            logger.info("📥 Step 1: Importing HuggingFaceEmbeddings...")
-            sys.stdout.flush()
+        # Build list of available API keys (fallback chain)
+        api_keys: list[tuple[str, str]] = []  # (key, description)
 
-            logger.info("📥 Step 2: Downloading/loading model from cache...")
-            sys.stdout.flush()
+        if settings.GOOGLE_EMBEDDING_API_KEY:
+            api_keys.append((settings.GOOGLE_EMBEDDING_API_KEY, "GOOGLE_EMBEDDING_API_KEY"))
+        if settings.GOOGLE_API_KEY:
+            api_keys.append((settings.GOOGLE_API_KEY, "GOOGLE_API_KEY"))
+        if settings.GOOGLE_FALLBACK_API_KEY:
+            api_keys.append((settings.GOOGLE_FALLBACK_API_KEY, "GOOGLE_FALLBACK_API_KEY"))
 
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name="all-MiniLM-L6-v2",
-                model_kwargs={"device": "cpu"},  # Ensure CPU only
-                encode_kwargs={"normalize_embeddings": True},
+        if not api_keys:
+            raise ValueError(
+                "No Google API key configured. "
+                "Set GOOGLE_EMBEDDING_API_KEY, GOOGLE_API_KEY, or GOOGLE_FALLBACK_API_KEY."
             )
 
-            elapsed = time.time() - start_time
-            logger.info(f"✅ Embedding model loaded successfully in {elapsed:.2f}s")
-            sys.stdout.flush()
-        except Exception as e:
-            elapsed = time.time() - start_time
-            logger.error(f"❌ Failed to load embedding model after {elapsed:.2f}s: {e}")
-            sys.stdout.flush()
-            raise
+        # Try each API key until one works
+        last_error: Exception | None = None
+        for api_key, key_name in api_keys:
+            try:
+                logger.info(f"🔗 Trying {key_name} for embeddings ({settings.EMBEDDING_MODEL})...")
+                # Set API key via environment variable to avoid SecretStr/gRPC issues
+                import os
+
+                os.environ["GOOGLE_API_KEY"] = str(api_key)
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    model=settings.EMBEDDING_MODEL,
+                )  # type: ignore
+                logger.info(f"✅ Google Embeddings API connected with {key_name}")
+                break
+            except Exception as e:
+                logger.warning(f"⚠️ {key_name} failed for embeddings: {e}")
+                last_error = e
+                continue
+        else:
+            # All keys failed
+            logger.error("❌ All API keys failed for embeddings")
+            if last_error:
+                raise last_error
+            raise ValueError("Failed to initialize embeddings with any API key")
 
         # PGVector instance
         # connecting strictly with the sync driver string or valid connection info

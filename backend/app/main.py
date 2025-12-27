@@ -57,66 +57,17 @@ app.add_middleware(RequestLoggingMiddleware)
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Global state for tracking model loading
-_model_loading_status: dict[str, bool | str] = {"started": False, "completed": False, "error": ""}
-
-
-def _preload_vector_service():
-    """
-    Pre-load the VectorService (embedding model) in a background thread.
-    This allows the server to start immediately and handle health checks
-    while the model loads in the background.
-    """
-    import sys
-    import time
-
-    from app.utils.logger import get_logger
-
-    logger = get_logger(__name__)
-
-    global _model_loading_status
-    _model_loading_status["started"] = True
-
-    start_time = time.time()
-    try:
-        logger.info("🔄 Background thread: Starting VectorService pre-load...")
-        sys.stdout.flush()
-
-        from app.services.vector_service import get_vector_service
-
-        get_vector_service()
-
-        elapsed = time.time() - start_time
-        _model_loading_status["completed"] = True
-        logger.info(
-            f"✅ Background thread: VectorService pre-loaded successfully in {elapsed:.2f}s!"
-        )
-        sys.stdout.flush()
-    except Exception as e:
-        elapsed = time.time() - start_time
-        _model_loading_status["error"] = str(e)
-        logger.error(
-            f"❌ Background thread: Failed to pre-load VectorService after {elapsed:.2f}s: {e}"
-        )
-        sys.stdout.flush()
-
 
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
-    import threading
-
     from app.utils.logger import get_logger
 
     logger = get_logger(__name__)
     logger.info("🚀 Application starting up...")
 
-    # Start pre-loading the embedding model in a background thread
-    # This allows the server to bind to the port immediately (passing health checks)
-    # while the model loads asynchronously
-    preload_thread = threading.Thread(target=_preload_vector_service, daemon=True)
-    preload_thread.start()
-    logger.info("🔄 VectorService pre-load started in background thread")
+    # NOTE: With Google Embeddings API, no background model loading is needed
+    # The API is instant and ready to use immediately
 
     logger.info("✅ Application startup complete - server ready to receive requests")
 
@@ -129,32 +80,10 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     """
-    Readiness endpoint that checks if the embedding model is loaded.
-    Returns 503 if still loading, 200 if ready.
+    Readiness endpoint.
+    With Google Embeddings API, the service is always ready immediately.
     """
-    from fastapi.responses import JSONResponse
-
-    if _model_loading_status["error"]:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "error",
-                "message": "Model loading failed",
-                "error": _model_loading_status["error"],
-            },
-        )
-
-    if not _model_loading_status["completed"]:
-        return JSONResponse(
-            status_code=503,
-            content={
-                "status": "loading",
-                "message": "Embedding model is still loading. Please wait...",
-                "started": _model_loading_status["started"],
-            },
-        )
-
-    return {"status": "ready", "message": "All services ready", "model_loaded": True}
+    return {"status": "ready", "message": "All services ready"}
 
 
 @app.get("/")

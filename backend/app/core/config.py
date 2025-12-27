@@ -36,8 +36,14 @@ class Settings(BaseSettings):
     # LLM Configuration
     # ========================================
 
-    # Google Gemini API
+    # Google Gemini API (for chat/LLM)
     GOOGLE_API_KEY: str | None = None
+
+    # Google Embedding API (separate key for embeddings - can be same project)
+    GOOGLE_EMBEDDING_API_KEY: str | None = None
+
+    # Google Fallback API Key (backup for both embeddings and LLM when primary keys fail)
+    GOOGLE_FALLBACK_API_KEY: str | None = None
 
     # Gemini Model Pool (December 2025 - Accurate Quotas)
     # Reference: User-provided data from Google AI Studio
@@ -105,7 +111,8 @@ class Settings(BaseSettings):
 
     # Vector Store Configuration
     VECTOR_STORE_COLLECTION_NAME: str = "air_india_policies"
-    EMBEDDING_DIMENSION: int = 384
+    EMBEDDING_MODEL: str = "models/text-embedding-004"  # Google's embedding model
+    EMBEDDING_DIMENSION: int = 768  # text-embedding-004 uses 768 dimensions
 
     # ========================================
     # Amadeus Flight API Configuration
