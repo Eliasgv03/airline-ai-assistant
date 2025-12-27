@@ -24,14 +24,37 @@ logger = get_logger(__name__)
 
 class VectorService:
     def __init__(self):
+        import sys
+        import time
+
         # Using a local, lightweight embedding model (384 dimensions)
         logger.info("Initializing VectorService...")
         logger.info("Loading embedding model (all-MiniLM-L6-v2)... This may take a moment.")
+        # Flush stdout to ensure logs appear in Render
+        sys.stdout.flush()
+        sys.stderr.flush()
+
+        start_time = time.time()
         try:
-            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            logger.info("✅ Embedding model loaded successfully.")
+            logger.info("📥 Step 1: Importing HuggingFaceEmbeddings...")
+            sys.stdout.flush()
+
+            logger.info("📥 Step 2: Downloading/loading model from cache...")
+            sys.stdout.flush()
+
+            self.embeddings = HuggingFaceEmbeddings(
+                model_name="all-MiniLM-L6-v2",
+                model_kwargs={"device": "cpu"},  # Ensure CPU only
+                encode_kwargs={"normalize_embeddings": True},
+            )
+
+            elapsed = time.time() - start_time
+            logger.info(f"✅ Embedding model loaded successfully in {elapsed:.2f}s")
+            sys.stdout.flush()
         except Exception as e:
-            logger.error(f"❌ Failed to load embedding model: {e}")
+            elapsed = time.time() - start_time
+            logger.error(f"❌ Failed to load embedding model after {elapsed:.2f}s: {e}")
+            sys.stdout.flush()
             raise
 
         # PGVector instance

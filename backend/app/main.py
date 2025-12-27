@@ -67,6 +67,9 @@ def _preload_vector_service():
     This allows the server to start immediately and handle health checks
     while the model loads in the background.
     """
+    import sys
+    import time
+
     from app.utils.logger import get_logger
 
     logger = get_logger(__name__)
@@ -74,16 +77,28 @@ def _preload_vector_service():
     global _model_loading_status
     _model_loading_status["started"] = True
 
+    start_time = time.time()
     try:
         logger.info("🔄 Background thread: Starting VectorService pre-load...")
+        sys.stdout.flush()
+
         from app.services.vector_service import get_vector_service
 
         get_vector_service()
+
+        elapsed = time.time() - start_time
         _model_loading_status["completed"] = True
-        logger.info("✅ Background thread: VectorService pre-loaded successfully!")
+        logger.info(
+            f"✅ Background thread: VectorService pre-loaded successfully in {elapsed:.2f}s!"
+        )
+        sys.stdout.flush()
     except Exception as e:
+        elapsed = time.time() - start_time
         _model_loading_status["error"] = str(e)
-        logger.error(f"❌ Background thread: Failed to pre-load VectorService: {e}")
+        logger.error(
+            f"❌ Background thread: Failed to pre-load VectorService after {elapsed:.2f}s: {e}"
+        )
+        sys.stdout.flush()
 
 
 @app.on_event("startup")
