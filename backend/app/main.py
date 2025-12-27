@@ -58,7 +58,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # Global state for tracking model loading
-_model_loading_status = {"started": False, "completed": False, "error": None}
+_model_loading_status: dict[str, bool | str] = {"started": False, "completed": False, "error": ""}
 
 
 def _preload_vector_service():

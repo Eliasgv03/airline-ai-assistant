@@ -27,6 +27,23 @@ AIRPORT_CODES = {
     "jaipur": "JAI",
     "kochi": "COK",
     "cochin": "COK",
+    # Asian cities
+    "beijing": "PEK",
+    "peking": "PEK",
+    "shanghai": "PVG",
+    "hong kong": "HKG",
+    "hongkong": "HKG",
+    "guangzhou": "CAN",
+    "canton": "CAN",
+    "shenzhen": "SZX",
+    "seoul": "ICN",
+    "kuala lumpur": "KUL",
+    "manila": "MNL",
+    "jakarta": "CGK",
+    "hanoi": "HAN",
+    "ho chi minh": "SGN",
+    "saigon": "SGN",
+    "taipei": "TPE",
     # International cities - with aliases
     "london": "LHR",
     "londres": "LHR",  # Spanish
@@ -42,6 +59,20 @@ AIRPORT_CODES = {
     "tokyo": "NRT",
     "tokio": "NRT",  # Spanish
     "bangkok": "BKK",
+    # More international cities
+    "sydney": "SYD",
+    "melbourne": "MEL",
+    "los angeles": "LAX",
+    "san francisco": "SFO",
+    "chicago": "ORD",
+    "toronto": "YYZ",
+    "amsterdam": "AMS",
+    "rome": "FCO",
+    "roma": "FCO",
+    "madrid": "MAD",
+    "barcelona": "BCN",
+    "moscow": "SVO",
+    "moscu": "SVO",
 }
 
 # Mock flight database

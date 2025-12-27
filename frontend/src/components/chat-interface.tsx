@@ -250,7 +250,6 @@ export function ChatInterface() {
                                     onKeyPress={handleKeyPress}
                                     placeholder="Type your message..."
                                     className="flex-1 text-sm md:text-base"
-                                    disabled={isTyping}
                                 />
                                 <Button
                                     onClick={handleSendMessage}

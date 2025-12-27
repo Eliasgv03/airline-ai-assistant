@@ -20,20 +20,28 @@ logger = get_logger(__name__)
 
 
 class FlightSearchInput(BaseModel):
-    """Input schema for flight search with explicit format instructions"""
+    """Input schema for flight search - MUST use IATA 3-letter airport codes"""
 
     origin: str = Field(
         description=(
-            "Origin city name or IATA airport code. "
-            "Examples: 'Delhi', 'DEL', 'Mumbai', 'BOM', 'New Delhi', 'Bangalore'. "
-            "Prefer using the city name as spoken by the user."
+            "Origin airport as a 3-letter IATA code (REQUIRED). "
+            "You MUST convert city names to their IATA codes. "
+            "Common mappings: Delhi=DEL, Mumbai=BOM, Bangalore=BLR, Chennai=MAA, "
+            "Kolkata=CCU, Hyderabad=HYD, Goa=GOI, London=LHR, New York=JFK, "
+            "Dubai=DXB, Singapore=SIN, Paris=CDG, Tokyo=NRT, Bangkok=BKK, "
+            "Beijing=PEK, Shanghai=PVG, Hong Kong=HKG, Sydney=SYD, Los Angeles=LAX. "
+            "ALWAYS use 3-letter uppercase codes like 'DEL', 'BOM', 'PEK'."
         )
     )
     destination: str = Field(
         description=(
-            "Destination city name or IATA airport code. "
-            "Examples: 'Mumbai', 'BOM', 'London', 'LHR', 'New York', 'JFK'. "
-            "Prefer using the city name as spoken by the user."
+            "Destination airport as a 3-letter IATA code (REQUIRED). "
+            "You MUST convert city names to their IATA codes. "
+            "Common mappings: Delhi=DEL, Mumbai=BOM, Bangalore=BLR, Chennai=MAA, "
+            "Kolkata=CCU, Hyderabad=HYD, Goa=GOI, London=LHR, New York=JFK, "
+            "Dubai=DXB, Singapore=SIN, Paris=CDG, Tokyo=NRT, Bangkok=BKK, "
+            "Beijing=PEK, Shanghai=PVG, Hong Kong=HKG, Sydney=SYD, Los Angeles=LAX. "
+            "ALWAYS use 3-letter uppercase codes like 'DEL', 'BOM', 'PEK'."
         )
     )
     date: str = Field(
@@ -127,9 +135,12 @@ search_flights = StructuredTool.from_function(
     coroutine=_search_flights_impl,
     name="search_flights",
     description=(
-        "Search for Air India flights between two cities. "
+        "Search for Air India flights between two airports. "
         "Use when users ask about flight schedules, times, availability, or prices. "
-        "IMPORTANT: Convert natural language dates to YYYY-MM-DD format."
+        "CRITICAL: You MUST convert city names to 3-letter IATA airport codes. "
+        "Examples: 'Beijing' → 'PEK', 'Delhi' → 'DEL', 'Mumbai' → 'BOM', "
+        "'London' → 'LHR', 'New York' → 'JFK', 'Tokyo' → 'NRT'. "
+        "Also convert dates like 'tomorrow' or 'January 2nd' to YYYY-MM-DD format."
     ),
     args_schema=FlightSearchInput,  # type: ignore[arg-type]
 )
