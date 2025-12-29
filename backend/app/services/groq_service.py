@@ -7,6 +7,7 @@ Groq offers generous free tier quotas and extremely low latency.
 
 import logging
 import os
+from typing import Any
 
 from langchain_core.messages import BaseMessage
 from langchain_groq import ChatGroq
@@ -169,9 +170,8 @@ class GroqProvider:
 
         Note: Groq doesn't have the same round-robin rotation as Gemini yet.
         """
-        llm = get_groq_llm(temperature=temperature, model_name=model_name)
-        if tools:
-            llm = llm.bind_tools(tools)  # type: ignore[union-attr]
+        llm_instance = get_groq_llm(temperature=temperature, model_name=model_name)
+        llm: Any = llm_instance.bind_tools(tools) if tools else llm_instance
         return llm.invoke(messages)
 
     async def astream(
@@ -185,9 +185,8 @@ class GroqProvider:
 
         Note: Uses default Groq model pool.
         """
-        llm = get_groq_llm(temperature=temperature)
-        if tools:
-            llm = llm.bind_tools(tools)  # type: ignore[union-attr]
+        llm_instance = get_groq_llm(temperature=temperature)
+        llm: Any = llm_instance.bind_tools(tools) if tools else llm_instance
         async for chunk in llm.astream(messages):
             yield chunk
 

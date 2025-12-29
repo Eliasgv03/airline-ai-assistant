@@ -92,7 +92,8 @@ class LLMManager:
     def provider_name(self) -> str:
         """Get the name of the active provider."""
         self._ensure_initialized()
-        return self._active_provider.name
+        assert self._active_provider is not None
+        return self._active_provider.name  # type: ignore[no-any-return]
 
     def get_llm(self, temperature: float = 0.3, model_name: str | None = None):
         """
@@ -106,6 +107,7 @@ class LLMManager:
             LangChain-compatible LLM instance
         """
         self._ensure_initialized()
+        assert self._active_provider is not None
         logger.debug(f"Getting LLM from {self.provider_name}")
         return self._active_provider.get_llm(
             temperature=temperature,
@@ -134,8 +136,9 @@ class LLMManager:
             AIMessage response
         """
         self._ensure_initialized()
+        assert self._active_provider is not None
         logger.info(f"🔄 Invoking LLM via {self.provider_name}")
-        return self._active_provider.invoke(
+        return self._active_provider.invoke(  # type: ignore[no-any-return]
             messages=messages,
             temperature=temperature,
             model_name=model_name,
@@ -162,6 +165,7 @@ class LLMManager:
             Response chunks
         """
         self._ensure_initialized()
+        assert self._active_provider is not None
         logger.info(f"🔄 Streaming via {self.provider_name}")
         async for chunk in self._active_provider.astream(
             messages=messages,

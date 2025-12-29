@@ -7,6 +7,7 @@ It handles configuration, error handling, logging, and automatic model fallback.
 
 import logging
 import os
+from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -139,7 +140,7 @@ def invoke_with_api_fallback(
     temperature: float = 0.3,
     model_name: str | None = None,
     tools: list | None = None,
-) -> AIMessage:
+) -> Any:
     """
     Invoke LLM with round-robin rotation and automatic fallback on errors.
 
@@ -167,18 +168,17 @@ def invoke_with_api_fallback(
         for api_key, key_name in api_keys:
             try:
                 logger.info(f"🔄 Trying {model_name} with {key_name}...")
-                llm = ChatGoogleGenerativeAI(
+                llm_instance = ChatGoogleGenerativeAI(  # type: ignore[call-arg]
                     model=model_name,
                     temperature=temperature,
                     google_api_key=api_key,  # type: ignore[arg-type]
                     max_retries=0,
                     timeout=30,
                 )
-                if tools:
-                    llm = llm.bind_tools(tools)
+                llm: Any = llm_instance.bind_tools(tools) if tools else llm_instance
                 response = llm.invoke(messages)
                 logger.info(f"✅ Success with {model_name} + {key_name}")
-                return response  # type: ignore[return-value]
+                return response
             except Exception as e:
                 logger.warning(f"⚠️ {model_name} + {key_name} failed: {e}")
                 continue
@@ -203,7 +203,7 @@ def invoke_with_api_fallback(
         try:
             logger.info(f"🔄 [{idx + 1}/{total}] Trying {combo_id}...")
 
-            llm = ChatGoogleGenerativeAI(
+            llm_instance = ChatGoogleGenerativeAI(  # type: ignore[call-arg]
                 model=model,
                 temperature=temperature,
                 google_api_key=api_key,  # type: ignore[arg-type]
@@ -211,12 +211,11 @@ def invoke_with_api_fallback(
                 timeout=30,
             )
 
-            if tools:
-                llm = llm.bind_tools(tools)
+            llm = llm_instance.bind_tools(tools) if tools else llm_instance
 
             response = llm.invoke(messages)
             logger.info(f"✅ Success with {combo_id}")
-            return response  # type: ignore[return-value]
+            return response
 
         except Exception as e:
             error_str = str(e)
@@ -280,7 +279,7 @@ async def astream_with_api_fallback(
         try:
             logger.info(f"🔄 Streaming [{idx + 1}/{total}]: Trying {combo_id}...")
 
-            llm = ChatGoogleGenerativeAI(
+            llm_instance = ChatGoogleGenerativeAI(  # type: ignore[call-arg]
                 model=model,
                 temperature=temperature,
                 google_api_key=api_key,  # type: ignore[arg-type]
@@ -288,8 +287,7 @@ async def astream_with_api_fallback(
                 timeout=30,
             )
 
-            if tools:
-                llm = llm.bind_tools(tools)
+            llm: Any = llm_instance.bind_tools(tools) if tools else llm_instance
 
             # Stream - yield chunks as they come
             async for chunk in llm.astream(messages):
@@ -425,7 +423,7 @@ class GeminiProvider:
         temperature: float = 0.3,
         model_name: str | None = None,
         tools: list | None = None,
-    ) -> AIMessage:
+    ) -> Any:
         """
         Invoke Gemini with round-robin rotation and fallback.
 
