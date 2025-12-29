@@ -27,6 +27,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8000",
         "http://0.0.0.0:3000",
+        "http://192.168.56.1:3000",  # Local network access
         "https://airline-ai-assistant-1.onrender.com",
         # Add your specific Render frontend URL here when deploying
         # Example: "https://airline-ai-assistant-frontend.onrender.com",
@@ -45,12 +46,11 @@ class Settings(BaseSettings):
     # Google Fallback API Key (backup for both embeddings and LLM when primary keys fail)
     GOOGLE_FALLBACK_API_KEY: str | None = None
 
-    # Gemini Model Pool (December 2025 - Accurate Quotas)
-    # Reference: User-provided data from Google AI Studio
+    # Gemini Model Pool - Round-robin rotation with fallback
+    # Models ordered by preference/quota availability
     GEMINI_MODEL_POOL: list[str] = [
-        "gemini-2.5-flash-lite",  # ~1,000 RPD - Best free tier (preview)
-        "gemini-2.5-flash",  # ~20-250 RPD - Most used, recently reduced
-        "gemini-2.0-flash",  # ~20-50 RPD - Experimental, low quota
+        "gemini-2.5-flash-lite",  # Best free tier (~1000 RPD preview)
+        "gemini-2.5-flash",  # Reduced to ~20 RPD Dec 2024
     ]
 
     # Legacy Gemini Models (kept for reference, not in active pool)

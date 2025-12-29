@@ -13,10 +13,9 @@ from langsmith import traceable
 
 from app.core.config import get_settings
 from app.prompts.system_prompts import get_system_prompt
-from app.services.gemini_service import LLMServiceError, get_llm
-from app.services.groq_service import get_groq_llm
 from app.services.language_service import detect_language, get_language_instruction
-from app.services.llm_manager import invoke_with_fallback_provider
+from app.services.llm_base import LLMServiceError
+from app.services.llm_manager import llm_manager
 from app.services.memory_service import get_memory_service
 from app.services.vector_service import get_vector_service
 from app.tools import ALL_TOOLS
@@ -50,66 +49,25 @@ class ChatService:
 
     def _invoke_with_fallback(self, messages) -> AIMessage:
         """
-        Invoke LLM with automatic fallback across models AND providers.
+        Invoke LLM with automatic fallback.
 
-        Strategy:
-        1. Try all models in current provider's pool
-        2. If all fail, try alternative provider
+        Uses llm_manager which routes to the configured provider (Gemini, Groq, etc.)
+        Gemini uses round-robin rotation across API keys and models.
         """
-        provider = settings.LLM_PROVIDER
-        logger.info(f"Using LLM provider: {provider}")
+        logger.info(f"🤖 Invoking LLM via {llm_manager.provider_name}")
 
-        # Get model pool based on provider
-        if provider == "gemini":
-            model_pool = settings.GEMINI_MODEL_POOL
-        elif provider == "groq":
-            model_pool = settings.GROQ_MODEL_POOL
-        else:
-            model_pool = settings.GEMINI_MODEL_POOL  # Default to Gemini
-
-        last_error = None
-        for idx, model_name in enumerate(model_pool):
-            try:
-                # Get LLM for specific model
-                logger.info(f"🔄 Trying model {idx + 1}/{len(model_pool)}: {model_name}")
-                if provider == "gemini":
-                    llm = get_llm(temperature=0.3, model_name=model_name)
-                elif provider == "groq":
-                    llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
-                else:
-                    llm = get_llm(temperature=0.3, model_name=model_name)
-
-                # Bind tools
-                llm_with_tools = llm.bind_tools(self.tools)
-
-                # Invoke
-                logger.info(f"💬 Invoking {provider} LLM with model: {model_name}")
-                response = llm_with_tools.invoke(messages)
-                logger.info(f"✅ Model {model_name} succeeded!")
-                return cast(AIMessage, response)
-            except Exception as e:
-                error_type = type(e).__name__
-                logger.warning(f"⚠️ Model {model_name} failed ({error_type}): {str(e)[:100]}")
-                logger.info("🔄 Falling back to next model in pool...")
-                last_error = e
-                continue
-
-        # If all models in current provider failed, try cross-provider fallback
-        logger.warning(f"All {provider} models failed, attempting cross-provider fallback")
         try:
-            response = invoke_with_fallback_provider(messages)
-            # Bind tools to response if needed
+            response = llm_manager.invoke(
+                messages=messages,
+                temperature=0.3,
+                model_name=None,  # Use rotation (Gemini) or default (others)
+                tools=self.tools,
+            )
             return response
-        except Exception as e:
-            logger.error(f"Cross-provider fallback also failed: {e}")
-            last_error = e
 
-        # If everything failed
-        error_msg = f"All models and providers failed. Last error: {last_error}"
-        logger.error(f"❌ {error_msg}")
-        if last_error:
-            raise last_error
-        raise LLMServiceError(error_msg)
+        except LLMServiceError as e:
+            logger.error(f"❌ LLM invocation failed: {e}")
+            raise
 
     @traceable(run_type="chain", name="process_message")
     def process_message(self, session_id: str, user_message: str) -> str:
@@ -268,41 +226,89 @@ class ChatService:
             messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
             messages.extend(history)
 
-            logger.info("💬 Starting streaming response...")
+            logger.info(f"💬 Starting streaming via {llm_manager.provider_name}...")
 
-            # Get model pool based on provider
-            provider = settings.LLM_PROVIDER
-            logger.info(f"Using LLM provider for streaming: {provider}")
-
-            if provider == "gemini":
-                model_pool = settings.GEMINI_MODEL_POOL
-            elif provider == "groq":
-                model_pool = settings.GROQ_MODEL_POOL
-            else:
-                logger.warning(f"Unknown provider '{provider}', defaulting to Gemini")
-                model_pool = settings.GEMINI_MODEL_POOL
-                provider = "gemini"
-
-            last_error = None
             full_response = ""
             tool_calls_collected: list = []
 
-            for model_name in model_pool:
-                try:
-                    # Get LLM for specific model based on provider
-                    if provider == "gemini":
-                        llm = get_llm(temperature=0.3, model_name=model_name)
-                    elif provider == "groq":
-                        llm = get_groq_llm(temperature=0.3, model_name=model_name)  # type: ignore[assignment]
-                    else:
-                        llm = get_llm(temperature=0.3, model_name=model_name)
+            try:
+                # First pass: Stream initial response and collect tool calls
+                async for chunk in llm_manager.astream(
+                    messages=messages,
+                    temperature=0.3,
+                    tools=self.tools,
+                ):
+                    # Extract content from chunk
+                    if hasattr(chunk, "content") and chunk.content:
+                        content = chunk.content
+                        if isinstance(content, str):
+                            full_response += content
+                            yield content
+                        elif isinstance(content, list):
+                            content_str = " ".join(
+                                str(item) for item in content if isinstance(item, str)
+                            )
+                            full_response += content_str
+                            yield content_str
 
-                    llm_with_tools = llm.bind_tools(self.tools)
-                    logger.debug(f"Streaming with {provider} model: {model_name}")
+                    # Collect tool calls (don't yield ugly message)
+                    if hasattr(chunk, "tool_calls") and chunk.tool_calls:
+                        tool_calls_collected.extend(chunk.tool_calls)
+                        logger.info(f"🔧 Collected {len(chunk.tool_calls)} tool calls")
 
-                    # First pass: Stream initial response and collect tool calls
-                    async for chunk in llm_with_tools.astream(messages):
-                        # Extract content from chunk
+                # If we have tool calls, execute them and get final response
+                if tool_calls_collected:
+                    logger.info(f"🔧 Executing {len(tool_calls_collected)} tool calls...")
+
+                    # Yield a nice status indicator
+                    yield "\n\n🔍 *Searching flights...*\n\n"
+
+                    # Build tool response messages
+                    from langchain.schema import AIMessage
+                    from langchain_core.messages import ToolMessage
+
+                    # Create AI message with tool calls
+                    ai_message = AIMessage(content=full_response, tool_calls=tool_calls_collected)
+                    messages.append(cast(BaseMessage, ai_message))
+
+                    # Execute each tool
+                    for tool_call in tool_calls_collected:
+                        tool_name = tool_call.get("name", "")
+                        tool_args = tool_call.get("args", {})
+                        tool_id = tool_call.get("id", "")
+
+                        logger.info(f"⚙️ Executing tool: {tool_name}")
+                        tool_output = None
+
+                        for tool in self.tools:
+                            if hasattr(tool, "name") and tool.name == tool_name:
+                                try:
+                                    if hasattr(tool, "ainvoke"):
+                                        tool_output = await tool.ainvoke(tool_args)
+                                    elif hasattr(tool, "invoke"):
+                                        tool_output = tool.invoke(tool_args)
+                                    logger.info(f"✅ Tool {tool_name} executed")
+                                except Exception as e:
+                                    logger.error(f"❌ Tool {tool_name} failed: {e}")
+                                    tool_output = f"Error: {str(e)}"
+                                break
+
+                        messages.append(
+                            ToolMessage(
+                                content=str(tool_output) if tool_output else "No results found",
+                                tool_call_id=tool_id,
+                            )
+                        )
+
+                    # Get final response with tool results
+                    logger.info("💬 Getting final response with tool results...")
+                    full_response = ""  # Reset for final response
+
+                    async for chunk in llm_manager.astream(
+                        messages=messages,
+                        temperature=0.3,
+                        tools=None,  # No tools for final response
+                    ):
                         if hasattr(chunk, "content") and chunk.content:
                             content = chunk.content
                             if isinstance(content, str):
@@ -315,88 +321,10 @@ class ChatService:
                                 full_response += content_str
                                 yield content_str
 
-                        # Collect tool calls (don't yield ugly message)
-                        if hasattr(chunk, "tool_calls") and chunk.tool_calls:
-                            tool_calls_collected.extend(chunk.tool_calls)
-                            logger.info(f"🔧 Collected {len(chunk.tool_calls)} tool calls")
+                logger.info(f"✅ Streaming completed via {llm_manager.provider_name}")
 
-                    # If we have tool calls, execute them and get final response
-                    if tool_calls_collected:
-                        logger.info(f"🔧 Executing {len(tool_calls_collected)} tool calls...")
-
-                        # Yield a nice status indicator
-                        yield "\n\n🔍 *Searching flights...*\n\n"
-
-                        # Build tool response messages
-                        from langchain.schema import AIMessage
-                        from langchain_core.messages import ToolMessage
-
-                        # Create AI message with tool calls
-                        ai_message = AIMessage(
-                            content=full_response, tool_calls=tool_calls_collected
-                        )
-                        messages.append(cast(BaseMessage, ai_message))
-
-                        # Execute each tool
-                        for tool_call in tool_calls_collected:
-                            tool_name = tool_call.get("name", "")
-                            tool_args = tool_call.get("args", {})
-                            tool_id = tool_call.get("id", "")
-
-                            logger.info(f"⚙️ Executing tool: {tool_name}")
-                            tool_output = None
-
-                            for tool in self.tools:
-                                if hasattr(tool, "name") and tool.name == tool_name:
-                                    try:
-                                        # Use ainvoke for async tools
-                                        if hasattr(tool, "ainvoke"):
-                                            tool_output = await tool.ainvoke(tool_args)
-                                        elif hasattr(tool, "invoke"):
-                                            tool_output = tool.invoke(tool_args)
-                                        logger.info(f"✅ Tool {tool_name} executed")
-                                    except Exception as e:
-                                        logger.error(f"❌ Tool {tool_name} failed: {e}")
-                                        tool_output = f"Error: {str(e)}"
-                                    break
-
-                            # Add tool result
-                            messages.append(
-                                ToolMessage(
-                                    content=str(tool_output) if tool_output else "No results found",
-                                    tool_call_id=tool_id,
-                                )
-                            )
-
-                        # Get final response with tool results
-                        logger.info("💬 Getting final response with tool results...")
-                        full_response = ""  # Reset for final response
-
-                        async for chunk in llm_with_tools.astream(messages):
-                            if hasattr(chunk, "content") and chunk.content:
-                                content = chunk.content
-                                if isinstance(content, str):
-                                    full_response += content
-                                    yield content
-                                elif isinstance(content, list):
-                                    content_str = " ".join(
-                                        str(item) for item in content if isinstance(item, str)
-                                    )
-                                    full_response += content_str
-                                    yield content_str
-
-                    logger.info(f"✅ Streaming completed with {provider} model: {model_name}")
-                    break
-
-                except Exception as e:
-                    logger.warning(f"⚠️ Streaming failed with {provider} model {model_name}: {e}")
-                    last_error = e
-                    continue
-
-            # If all models failed
-            if not full_response:
-                error_msg = f"All {provider} models failed. Last error: {last_error}"
-                logger.error(f"❌ {error_msg}")
+            except LLMServiceError as e:
+                logger.error(f"❌ Streaming failed: {e}")
                 yield "\n\nI apologize, but I'm experiencing technical difficulties. Please try again.\n\n"
 
             # Add complete response to memory

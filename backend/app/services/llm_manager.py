@@ -1,109 +1,179 @@
 """
-Unified LLM Service - Provider-Agnostic Interface
+LLM Manager - Central Dispatcher for LLM Providers.
 
-This service provides a unified interface for both Gemini and Groq LLMs,
-allowing easy switching between providers via configuration.
+This module provides a provider-agnostic interface for LLM operations.
+It reads the LLM_PROVIDER setting from config and routes calls to the
+appropriate provider (Gemini, Groq, OpenAI, etc.).
+
+Usage:
+    from app.services.llm_manager import llm_manager
+
+    # Invoke (with round-robin rotation on Gemini)
+    response = llm_manager.invoke(messages)
+
+    # Streaming
+    async for chunk in llm_manager.astream(messages):
+        yield chunk
+
+To add a new provider:
+    1. Create provider_service.py (e.g., openai_service.py)
+    2. Implement ProviderClass with: name, get_llm, invoke, astream
+    3. Add to PROVIDERS dict below
+    4. Add LLM_PROVIDER option in config.py
 """
 
 import logging
-from typing import cast
+from typing import TYPE_CHECKING
 
 from langchain_core.messages import AIMessage, BaseMessage
 
 from app.core.config import get_settings
-from app.services.gemini_service import LLMServiceError, get_llm
-from app.services.groq_service import GroqServiceError, get_groq_llm
+from app.services.llm_base import LLMServiceError
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-class UnifiedLLMError(Exception):
-    """Custom exception for unified LLM errors"""
-
-    pass
-
-
-def get_unified_llm(temperature: float = 0.3, max_tokens: int | None = None):
+class LLMManager:
     """
-    Get LLM instance based on configured provider.
+    Central LLM Manager that dispatches to the configured provider.
 
-    Args:
-        temperature: Controls randomness (0.0 = deterministic, 1.0 = creative)
-        max_tokens: Maximum tokens in response
+    This class provides a unified interface regardless of which LLM provider
+    is configured. It supports:
+    - Gemini (with round-robin rotation)
+    - Groq (high-speed alternative)
+    - Future providers (OpenAI, Anthropic, etc.)
 
-    Returns:
-        Configured LLM instance (Gemini or Groq)
-
-    Raises:
-        UnifiedLLMError: If provider is invalid or initialization fails
+    The active provider is determined by the LLM_PROVIDER setting in config.
     """
-    provider = settings.LLM_PROVIDER.lower()
 
-    logger.info(f"Initializing LLM with provider: {provider}")
+    def __init__(self):
+        self._providers: dict = {}
+        self._active_provider = None
+        self._initialized = False
 
-    try:
-        if provider == "gemini":
-            return get_llm(temperature=temperature, max_tokens=max_tokens)
-        elif provider == "groq":
-            return get_groq_llm(temperature=temperature, max_tokens=max_tokens)
-        else:
-            raise UnifiedLLMError(f"Invalid LLM provider: {provider}. Must be 'gemini' or 'groq'")
-    except (LLMServiceError, GroqServiceError) as e:
-        logger.error(f"Failed to initialize {provider} LLM: {str(e)}")
-        raise UnifiedLLMError(f"LLM initialization failed: {str(e)}") from e
+    def _ensure_initialized(self):
+        """Lazy initialization of providers."""
+        if self._initialized:
+            return
+
+        # Import providers here to avoid circular imports
+        from app.services.gemini_service import gemini_provider
+        from app.services.groq_service import groq_provider
+
+        self._providers = {
+            "gemini": gemini_provider,
+            "groq": groq_provider,
+            # Add new providers here:
+            # "openai": openai_provider,
+        }
+
+        provider_name = settings.LLM_PROVIDER.lower()
+        if provider_name not in self._providers:
+            available = ", ".join(self._providers.keys())
+            raise LLMServiceError(
+                f"Unknown LLM_PROVIDER: '{provider_name}'. Available: {available}"
+            )
+
+        self._active_provider = self._providers[provider_name]
+        self._initialized = True
+        logger.info(f"🤖 LLM Manager initialized with provider: {provider_name}")
+
+    @property
+    def provider(self):
+        """Get the active provider instance."""
+        self._ensure_initialized()
+        return self._active_provider
+
+    @property
+    def provider_name(self) -> str:
+        """Get the name of the active provider."""
+        self._ensure_initialized()
+        return self._active_provider.name
+
+    def get_llm(self, temperature: float = 0.3, model_name: str | None = None):
+        """
+        Get an LLM instance from the active provider.
+
+        Args:
+            temperature: Controls randomness
+            model_name: Specific model to use
+
+        Returns:
+            LangChain-compatible LLM instance
+        """
+        self._ensure_initialized()
+        logger.debug(f"Getting LLM from {self.provider_name}")
+        return self._active_provider.get_llm(
+            temperature=temperature,
+            model_name=model_name,
+        )
+
+    def invoke(
+        self,
+        messages: list[BaseMessage],
+        temperature: float = 0.3,
+        model_name: str | None = None,
+        tools: list | None = None,
+    ) -> AIMessage:
+        """
+        Invoke the LLM with the given messages.
+
+        Uses round-robin rotation on Gemini, standard invocation on others.
+
+        Args:
+            messages: Conversation messages
+            temperature: Controls randomness
+            model_name: Specific model (None = use rotation on Gemini)
+            tools: Optional tools to bind
+
+        Returns:
+            AIMessage response
+        """
+        self._ensure_initialized()
+        logger.info(f"🔄 Invoking LLM via {self.provider_name}")
+        return self._active_provider.invoke(
+            messages=messages,
+            temperature=temperature,
+            model_name=model_name,
+            tools=tools,
+        )
+
+    async def astream(
+        self,
+        messages: list[BaseMessage],
+        temperature: float = 0.3,
+        tools: list | None = None,
+    ):
+        """
+        Stream LLM responses asynchronously.
+
+        Uses round-robin rotation on Gemini, standard streaming on others.
+
+        Args:
+            messages: Conversation messages
+            temperature: Controls randomness
+            tools: Optional tools to bind
+
+        Yields:
+            Response chunks
+        """
+        self._ensure_initialized()
+        logger.info(f"🔄 Streaming via {self.provider_name}")
+        async for chunk in self._active_provider.astream(
+            messages=messages,
+            temperature=temperature,
+            tools=tools,
+        ):
+            yield chunk
 
 
-def invoke_with_fallback_provider(messages: list[BaseMessage]) -> AIMessage:
-    """
-    Invoke LLM with automatic provider fallback.
+# Singleton instance for import
+llm_manager = LLMManager()
 
-    First tries the configured provider, then falls back to the alternative.
 
-    Args:
-        messages: List of conversation messages
-
-    Returns:
-        AI response message
-
-    Raises:
-        UnifiedLLMError: If both providers fail
-    """
-    primary_provider = settings.LLM_PROVIDER.lower()
-    fallback_provider = "groq" if primary_provider == "gemini" else "gemini"
-
-    # Try primary provider
-    try:
-        logger.info(f"Attempting primary provider: {primary_provider}")
-        llm = get_unified_llm()
-        response = llm.invoke(messages)
-        logger.info(f"✅ {primary_provider} succeeded")
-        return cast(AIMessage, response)
-    except Exception as e:
-        logger.warning(f"⚠️ {primary_provider} failed: {str(e)}")
-
-        # Try fallback provider
-        try:
-            logger.info(f"Attempting fallback provider: {fallback_provider}")
-            # Temporarily switch provider
-            original_provider = settings.LLM_PROVIDER
-            settings.LLM_PROVIDER = fallback_provider
-
-            llm = get_unified_llm()
-            response = llm.invoke(messages)
-
-            # Restore original provider
-            settings.LLM_PROVIDER = original_provider
-
-            logger.info(f"✅ {fallback_provider} succeeded (fallback)")
-            return cast(AIMessage, response)
-        except Exception as fallback_error:
-            logger.error(f"❌ {fallback_provider} also failed: {str(fallback_error)}")
-
-            # Restore original provider
-            settings.LLM_PROVIDER = original_provider
-
-            raise UnifiedLLMError(
-                f"Both providers failed. {primary_provider}: {str(e)}, "
-                f"{fallback_provider}: {str(fallback_error)}"
-            ) from fallback_error
+# Re-export LLMServiceError for convenience
+__all__ = ["llm_manager", "LLMManager", "LLMServiceError"]

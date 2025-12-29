@@ -58,10 +58,49 @@ The Airline AI Assistant is a conversational AI system built with a microservice
 - **VectorService**: RAG with pgvector
 - **LanguageService**: Multi-language detection
 
-### LLM Layer
-- **Gemini**: Primary LLM provider
-- **Groq**: Fallback LLM provider
-- **Model Pool**: Multiple models with automatic fallback
+### LLM Layer (Strategy Pattern)
+
+The LLM layer uses the **Strategy Pattern** for provider abstraction:
+
+```
+chat_service.py
+      ↓ uses
+llm_manager.py  ←── Central dispatcher (reads LLM_PROVIDER from config)
+      ↓ routes to
+┌─────────────────┬─────────────────┬─────────────────┐
+│ GeminiProvider  │ GroqProvider    │ OpenAIProvider  │
+│ (primary)       │ (alternative)   │ (add later)     │
+└─────────────────┴─────────────────┴─────────────────┘
+```
+
+**Design Patterns Used:**
+- **Strategy Pattern**: Providers are interchangeable strategies
+- **Facade Pattern**: `llm_manager` provides unified interface
+- **Dependency Inversion**: `chat_service` depends on abstraction, not concrete providers
+
+**Key Files:**
+| File | Purpose |
+|------|---------|
+| `llm_base.py` | Interface all providers must implement |
+| `llm_manager.py` | Central dispatcher - routes to active provider |
+| `gemini_service.py` | Gemini with round-robin rotation |
+| `groq_service.py` | Groq high-speed alternative |
+
+**Gemini Round-Robin Rotation:**
+```
+Request 1 → gemini-2.5-flash-lite (PRIMARY API KEY)
+Request 2 → gemini-2.5-flash-lite (FALLBACK API KEY)
+Request 3 → gemini-2.5-flash (PRIMARY API KEY)
+Request 4 → gemini-2.5-flash (FALLBACK API KEY)
+Request 5 → (cycle repeats)
+```
+
+**To switch providers:** Set `LLM_PROVIDER=groq` in `.env`
+
+**To add a new provider:**
+1. Create `new_service.py` with `NewProvider` class
+2. Register in `llm_manager.py`
+
 
 ### Data Layer
 - **PostgreSQL + pgvector**: Vector embeddings storage

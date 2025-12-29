@@ -130,3 +130,67 @@ def chat_complete_groq(
     except Exception as e:
         logger.error(f"Groq LLM completion failed: {str(e)}")
         raise GroqServiceError(f"Failed to generate completion: {str(e)}") from e
+
+
+# =============================================================================
+# GroqProvider Class - Implements BaseLLMProvider Interface
+# =============================================================================
+
+
+class GroqProvider:
+    """
+    Groq LLM Provider implementing the BaseLLMProvider interface.
+
+    This class provides a unified interface for Groq that llm_manager.py can use.
+    """
+
+    @property
+    def name(self) -> str:
+        """Return provider name."""
+        return "groq"
+
+    def get_llm(
+        self,
+        temperature: float = 0.3,
+        model_name: str | None = None,
+    ) -> ChatGroq:
+        """Get a Groq LLM instance."""
+        return get_groq_llm(temperature=temperature, model_name=model_name)
+
+    def invoke(
+        self,
+        messages: list[BaseMessage],
+        temperature: float = 0.3,
+        model_name: str | None = None,
+        tools: list | None = None,
+    ):
+        """
+        Invoke Groq with the given messages.
+
+        Note: Groq doesn't have the same round-robin rotation as Gemini yet.
+        """
+        llm = get_groq_llm(temperature=temperature, model_name=model_name)
+        if tools:
+            llm = llm.bind_tools(tools)  # type: ignore[union-attr]
+        return llm.invoke(messages)
+
+    async def astream(
+        self,
+        messages: list[BaseMessage],
+        temperature: float = 0.3,
+        tools: list | None = None,
+    ):
+        """
+        Async streaming for Groq.
+
+        Note: Uses default Groq model pool.
+        """
+        llm = get_groq_llm(temperature=temperature)
+        if tools:
+            llm = llm.bind_tools(tools)  # type: ignore[union-attr]
+        async for chunk in llm.astream(messages):
+            yield chunk
+
+
+# Singleton instance for easy import
+groq_provider = GroqProvider()
