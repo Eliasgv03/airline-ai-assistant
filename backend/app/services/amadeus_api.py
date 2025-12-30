@@ -103,12 +103,14 @@ class AmadeusFlightAPI:
 
         try:
             # Call Amadeus Flight Offers Search API
+            # Filter by Air India (AI) to only show our flights
             response = self.client.shopping.flight_offers_search.get(
                 originLocationCode=origin.upper(),
                 destinationLocationCode=destination.upper(),
                 departureDate=departure_date,
                 adults=adults,
                 max=max_results,
+                includedAirlineCodes="AI",  # Only Air India flights
             )
 
             # Parse response

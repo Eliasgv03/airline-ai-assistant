@@ -172,6 +172,24 @@ PORTUGUESE_DISTINCTIVE = [
     "avião",
 ]
 
+# Words that distinguish Italian from Spanish (to prevent misdetection)
+ITALIAN_DISTINCTIVE = [
+    "volo",
+    "voli",
+    "bagaglio",
+    "cercare",
+    "quanto",
+    "quando",
+    "dove",
+    "domani",
+    "aereo",
+    "grazie",
+    "prego",
+    "scusa",
+    "buongiorno",
+    "arrivederci",
+]
+
 
 def detect_language(text: str, default: str = "en", session_hint: str | None = None) -> str:
     """
@@ -232,6 +250,21 @@ def detect_language(text: str, default: str = "en", session_hint: str | None = N
             spanish_keyword_count = sum(1 for kw in LANGUAGE_KEYWORDS["es"] if kw in text_clean)
             if spanish_keyword_count >= 2:
                 logger.info(f"🌍 Overriding pt→es due to {spanish_keyword_count} Spanish keywords")
+                return "es"
+
+        # If langdetect says Italian but we have Spanish keywords, prefer Spanish
+        # This is a common misdetection for short Spanish texts
+        if detected == "it":
+            spanish_keyword_count = sum(1 for kw in LANGUAGE_KEYWORDS["es"] if kw in text_clean)
+            italian_keyword_count = sum(1 for kw in ITALIAN_DISTINCTIVE if kw in text_clean)
+            if spanish_keyword_count > italian_keyword_count:
+                logger.info(
+                    f"🌍 Overriding it→es due to {spanish_keyword_count} Spanish vs {italian_keyword_count} Italian keywords"
+                )
+                return "es"
+            # Also check if session hint is Spanish - maintain language continuity
+            if session_hint == "es" and italian_keyword_count == 0:
+                logger.info("🌍 Overriding it→es due to session hint (no Italian keywords found)")
                 return "es"
 
         return detected
