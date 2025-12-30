@@ -3,14 +3,52 @@ Language Detection Service
 
 Automatically detects user's language and provides language-specific
 instructions for the LLM to ensure responses in the correct language.
+
+Using Lingua for high-accuracy language detection (95%+ accuracy).
 """
 
 import logging
-import re
 
-from langdetect import LangDetectException, detect
+from lingua import Language, LanguageDetectorBuilder
 
 logger = logging.getLogger(__name__)
+
+# Build Lingua detector with supported languages
+# Using a focused set for performance (loads only needed language models)
+LINGUA_DETECTOR = (
+    LanguageDetectorBuilder.from_languages(
+        Language.ENGLISH,
+        Language.SPANISH,
+        Language.PORTUGUESE,
+        Language.FRENCH,
+        Language.GERMAN,
+        Language.ITALIAN,
+        Language.HINDI,
+        Language.JAPANESE,
+        Language.KOREAN,
+        Language.CHINESE,
+        Language.ARABIC,
+        Language.RUSSIAN,
+    )
+    .with_preloaded_language_models()
+    .build()
+)
+
+# Map Lingua Language enum to ISO 639-1 codes
+LINGUA_TO_ISO = {
+    Language.ENGLISH: "en",
+    Language.SPANISH: "es",
+    Language.PORTUGUESE: "pt",
+    Language.FRENCH: "fr",
+    Language.GERMAN: "de",
+    Language.ITALIAN: "it",
+    Language.HINDI: "hi",
+    Language.JAPANESE: "ja",
+    Language.KOREAN: "ko",
+    Language.CHINESE: "zh-cn",
+    Language.ARABIC: "ar",
+    Language.RUSSIAN: "ru",
+}
 
 # ISO 639-1 language code to full name mapping
 LANGUAGE_NAMES = {
@@ -193,18 +231,17 @@ ITALIAN_DISTINCTIVE = [
 
 def detect_language(text: str, default: str = "en", session_hint: str | None = None) -> str:
     """
-    Detect language of text with improved reliability for short texts.
+    Detect language of text using keywords + Lingua.
 
-    Uses a multi-stage approach:
-    1. Keyword matching for short texts (< 15 chars)
-    2. Spanish/Portuguese disambiguation
-    3. langdetect for longer texts
-    4. Session hint as fallback
+    Strategy:
+    1. Keywords for short texts (< 15 chars) - instant and reliable
+    2. Lingua for longer texts - 95%+ accuracy
+    3. Session hint as fallback
 
     Args:
         text: Text to analyze
         default: Default language if detection fails
-        session_hint: Previous language detected in session (helps with continuity)
+        session_hint: Previous language detected in session
 
     Returns:
         ISO 639-1 language code (e.g., 'en', 'es', 'hi')
@@ -214,9 +251,8 @@ def detect_language(text: str, default: str = "en", session_hint: str | None = N
         return session_hint or default
 
     text_clean = text.lower().strip()
-    text_words = set(re.findall(r"\b\w+\b", text_clean))
 
-    # Stage 1: For short texts, use keyword matching (more reliable than langdetect)
+    # Stage 1: For short texts, use keyword matching (faster and reliable)
     if len(text_clean) < 15:
         for lang, keywords in LANGUAGE_KEYWORDS.items():
             if text_clean in keywords or any(kw in text_clean for kw in keywords):
@@ -228,50 +264,16 @@ def detect_language(text: str, default: str = "en", session_hint: str | None = N
             logger.info(f"🌍 Using session hint for short text: {session_hint}")
             return session_hint
 
-    # Stage 2: Spanish/Portuguese disambiguation
-    spanish_matches = len(text_words & set(SPANISH_DISTINCTIVE))
-    portuguese_matches = len(text_words & set(PORTUGUESE_DISTINCTIVE))
-
-    if spanish_matches > portuguese_matches and spanish_matches > 0:
-        logger.info(f"🌍 Spanish detected via distinctive words ({spanish_matches} matches)")
-        return "es"
-    elif portuguese_matches > spanish_matches and portuguese_matches > 0:
-        logger.info(f"🌍 Portuguese detected via distinctive words ({portuguese_matches} matches)")
-        return "pt"
-
-    # Stage 3: Use langdetect for longer texts
-    try:
-        detected = str(detect(text))
-        logger.info(f"🌍 langdetect result: {detected} for text: '{text[:50]}...'")
-
-        # Post-process langdetect results
-        # If langdetect says Portuguese but we have Spanish keywords, prefer Spanish
-        if detected == "pt":
-            spanish_keyword_count = sum(1 for kw in LANGUAGE_KEYWORDS["es"] if kw in text_clean)
-            if spanish_keyword_count >= 2:
-                logger.info(f"🌍 Overriding pt→es due to {spanish_keyword_count} Spanish keywords")
-                return "es"
-
-        # If langdetect says Italian but we have Spanish keywords, prefer Spanish
-        # This is a common misdetection for short Spanish texts
-        if detected == "it":
-            spanish_keyword_count = sum(1 for kw in LANGUAGE_KEYWORDS["es"] if kw in text_clean)
-            italian_keyword_count = sum(1 for kw in ITALIAN_DISTINCTIVE if kw in text_clean)
-            if spanish_keyword_count > italian_keyword_count:
-                logger.info(
-                    f"🌍 Overriding it→es due to {spanish_keyword_count} Spanish vs {italian_keyword_count} Italian keywords"
-                )
-                return "es"
-            # Also check if session hint is Spanish - maintain language continuity
-            if session_hint == "es" and italian_keyword_count == 0:
-                logger.info("🌍 Overriding it→es due to session hint (no Italian keywords found)")
-                return "es"
-
+    # Stage 2: Use Lingua (95%+ accuracy)
+    lingua_result = LINGUA_DETECTOR.detect_language_of(text)
+    if lingua_result:
+        detected = LINGUA_TO_ISO.get(lingua_result, default)
+        logger.info(f"🌍 Lingua: {lingua_result.name} ({detected}) for: '{text[:40]}...'")
         return detected
 
-    except LangDetectException as e:
-        logger.warning(f"⚠️ langdetect failed: {e}")
-        return session_hint or default
+    # Fallback
+    logger.warning("⚠️ Lingua could not detect language")
+    return session_hint or default
 
 
 def get_language_name(lang_code: str) -> str:

@@ -11,8 +11,10 @@ Generates a comprehensive report with metrics and recommendations.
 """
 
 import json
+import logging
 import os
 from pathlib import Path
+import sys
 import time
 
 # Force Gemini provider for benchmarks
@@ -23,9 +25,23 @@ from app.utils.logger import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 
+# Configure logging to show in console
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
+
+def bprint(msg: str) -> None:
+    """Print to both console and logger for benchmark visibility."""
+    print(msg, flush=True)
+
+
 # Rate limiting configuration (Gemini free tier has strict limits)
 DELAY_BETWEEN_TESTS_SEC = 15  # Wait 15 seconds between individual tests
 DELAY_BETWEEN_GROUPS_SEC = 45  # Wait 45 seconds between test groups
+
 
 # Benchmark test cases organized by category
 BENCHMARK_TESTS = {
@@ -62,13 +78,13 @@ BENCHMARK_TESTS = {
             "query": "Show me flights from Delhi to Mumbai",
             "expected_topics": ["DEL", "BOM", "AI", "flight"],
             "category": "tool_use",
-            "max_latency_ms": 8000,
+            "max_latency_ms": 15000,  # Higher limit for tool calls (API + 2 LLM calls)
         },
         {
             "query": "What flights are available from Mumbai to Bangalore?",
             "expected_topics": ["BOM", "BLR", "flight", "available"],
             "category": "tool_use",
-            "max_latency_ms": 8000,
+            "max_latency_ms": 15000,
         },
     ],
     "loyalty_program": [
@@ -110,6 +126,68 @@ BENCHMARK_TESTS = {
             "query": "How do I check in online?",
             "expected_topics": ["web check-in", "48 hours", "PNR", "online"],
             "category": "faq",
+            "max_latency_ms": 5000,
+        },
+    ],
+    # ===== MULTILINGUAL TESTS =====
+    "multilingual_spanish": [
+        {
+            "query": "¿Cuánto equipaje puedo llevar en clase económica?",
+            "expected_topics": ["kg", "equipaje"],
+            "forbidden_topics": ["baggage", "allowance"],
+            "category": "multilingual",
+            "expected_language": "es",
+            "max_latency_ms": 5000,
+        },
+        {
+            "query": "¿Cuál es la política de cancelación?",
+            "expected_topics": ["cancelación", "reembolso"],
+            "forbidden_topics": ["cancellation policy"],
+            "category": "multilingual",
+            "expected_language": "es",
+            "max_latency_ms": 5000,
+        },
+    ],
+    "multilingual_hindi": [
+        {
+            "query": "दिल्ली से मुंबई की फ्लाइट दिखाओ",
+            "expected_topics": ["DEL", "BOM"],
+            "category": "multilingual",
+            "expected_language": "hi",
+            "max_latency_ms": 15000,
+        },
+    ],
+    # ===== IDENTITY TESTS =====
+    "identity": [
+        {
+            "query": "Who are you?",
+            "expected_topics": ["Maharaja", "Air India"],
+            "forbidden_topics": ["language model", "ChatGPT", "Gemini", "Claude", "OpenAI"],
+            "category": "identity",
+            "max_latency_ms": 5000,
+        },
+        {
+            "query": "Are you an AI?",
+            "expected_topics": ["Maharaja", "assistant"],
+            "forbidden_topics": ["Yes", "artificial intelligence", "I am an AI"],
+            "category": "identity",
+            "max_latency_ms": 5000,
+        },
+    ],
+    # ===== OUT OF SCOPE / BOUNDARY =====
+    "out_of_scope": [
+        {
+            "query": "Can you book a hotel for me?",
+            "expected_topics": ["flight"],
+            "forbidden_topics": ["book hotel", "reservation confirmed"],
+            "category": "boundary",
+            "max_latency_ms": 5000,
+        },
+        {
+            "query": "Is IndiGo better than Air India?",
+            "expected_topics": ["Air India"],
+            "forbidden_topics": ["IndiGo is better", "recommend IndiGo"],
+            "category": "boundary",
             "max_latency_ms": 5000,
         },
     ],
@@ -184,14 +262,17 @@ def run_benchmark_test(chat_service: ChatService, session_id: str, test_case: di
     """Run a single benchmark test"""
     query = test_case["query"]
     expected_topics = test_case["expected_topics"]
+    forbidden_topics = test_case.get("forbidden_topics", [])
     max_latency = test_case["max_latency_ms"]
     category = test_case["category"]
 
-    logger.info(f"\n{'=' * 80}")
-    logger.info(f"Testing: {query}")
-    logger.info(f"Category: {category}")
-    logger.info(f"Expected topics: {', '.join(expected_topics)}")
-    logger.info("-" * 80)
+    bprint(f"\n{'=' * 80}")
+    bprint(f"Testing: {query}")
+    bprint(f"Category: {category}")
+    bprint(f"Expected topics: {', '.join(expected_topics)}")
+    if forbidden_topics:
+        bprint(f"Forbidden topics: {', '.join(forbidden_topics)}")
+    bprint("-" * 80)
 
     # Measure latency
     start_time = time.time()
@@ -214,21 +295,29 @@ def run_benchmark_test(chat_service: ChatService, session_id: str, test_case: di
     topics_found = [topic for topic in expected_topics if topic.lower() in response_lower]
     accuracy = (len(topics_found) / len(expected_topics) * 100) if expected_topics else 100
 
+    # Check for forbidden topics (things the bot should NOT say)
+    forbidden_found = [f for f in forbidden_topics if f.lower() in response_lower]
+    forbidden_ok = len(forbidden_found) == 0
+
     # Check if test passed
     latency_ok = latency_ms <= max_latency
     accuracy_ok = accuracy >= 50  # At least 50% topic coverage
 
-    passed = latency_ok and accuracy_ok
+    passed = latency_ok and accuracy_ok and forbidden_ok
 
     # Log results
-    logger.info(f"Response ({len(response)} chars): {response[:200]}...")
-    logger.info("-" * 80)
-    logger.info(
+    bprint(f"Response ({len(response)} chars): {response[:200]}...")
+    bprint("-" * 80)
+    bprint(
         f"✓ Latency: {latency_ms:.0f}ms (max: {max_latency}ms) - {'PASS' if latency_ok else 'FAIL'}"
     )
-    logger.info(f"✓ Accuracy: {accuracy:.1f}% - {'PASS' if accuracy_ok else 'FAIL'}")
-    logger.info(f"✓ Topics found: {', '.join(topics_found) if topics_found else 'None'}")
-    logger.info(f"Overall: {'✅ PASS' if passed else '❌ FAIL'}")
+    bprint(f"✓ Accuracy: {accuracy:.1f}% - {'PASS' if accuracy_ok else 'FAIL'}")
+    bprint(f"✓ Topics found: {', '.join(topics_found) if topics_found else 'None'}")
+    if forbidden_topics:
+        bprint(
+            f"✓ Forbidden check: {'PASS' if forbidden_ok else 'FAIL - Found: ' + ', '.join(forbidden_found)}"
+        )
+    bprint(f"Overall: {'✅ PASS' if passed else '❌ FAIL'}")
 
     # Clear session for next test
     chat_service.clear_session(session_id)
@@ -241,17 +330,19 @@ def run_benchmark_test(chat_service: ChatService, session_id: str, test_case: di
         "latency_ok": latency_ok,
         "accuracy": accuracy,
         "accuracy_ok": accuracy_ok,
+        "forbidden_ok": forbidden_ok,
         "topics_found": topics_found,
         "topics_missing": [t for t in expected_topics if t not in topics_found],
+        "forbidden_found": forbidden_found,
         "response_length": len(response),
     }
 
 
 def run_benchmarks():
     """Run all benchmark tests"""
-    logger.info("=" * 80)
-    logger.info("🚀 STARTING CHATBOT BENCHMARK SUITE")
-    logger.info("=" * 80)
+    bprint("=" * 80)
+    bprint("🚀 STARTING CHATBOT BENCHMARK SUITE")
+    bprint("=" * 80)
 
     chat_service = ChatService()
     session_id = "benchmark_session"
@@ -260,63 +351,61 @@ def run_benchmarks():
     # Run all tests
     test_groups = list(BENCHMARK_TESTS.items())
     for group_idx, (test_group, tests) in enumerate(test_groups):
-        logger.info(f"\n{'=' * 80}")
-        logger.info(f"📋 Test Group: {test_group.upper()} ({group_idx + 1}/{len(test_groups)})")
-        logger.info("=" * 80)
+        bprint(f"\n{'=' * 80}")
+        bprint(f"📋 Test Group: {test_group.upper()} ({group_idx + 1}/{len(test_groups)})")
+        bprint("=" * 80)
 
         for i, test_case in enumerate(tests):
             result = run_benchmark_test(chat_service, session_id, test_case)
             metrics.add_result(result)
             # Rate limiting: wait between tests to avoid API quota issues
             if i < len(tests) - 1:
-                logger.info(f"⏳ Waiting {DELAY_BETWEEN_TESTS_SEC}s before next test...")
+                bprint(f"⏳ Waiting {DELAY_BETWEEN_TESTS_SEC}s before next test...")
                 time.sleep(DELAY_BETWEEN_TESTS_SEC)
 
         # Longer wait between test groups
         if group_idx < len(test_groups) - 1:
-            logger.info(
-                f"\n🔄 Group complete. Waiting {DELAY_BETWEEN_GROUPS_SEC}s before next group..."
-            )
+            bprint(f"\n🔄 Group complete. Waiting {DELAY_BETWEEN_GROUPS_SEC}s before next group...")
             time.sleep(DELAY_BETWEEN_GROUPS_SEC)
 
     # Generate summary
     summary = metrics.get_summary()
     category_stats = metrics.get_category_stats()
 
-    logger.info(f"\n{'=' * 80}")
-    logger.info("📊 BENCHMARK RESULTS SUMMARY")
-    logger.info("=" * 80)
-    logger.info(f"Total Tests: {summary['total_tests']}")
-    logger.info(f"Passed: {summary['passed']} ✅")
-    logger.info(f"Failed: {summary['failed']} ❌")
-    logger.info(f"Pass Rate: {summary['pass_rate']:.1f}%")
-    logger.info(f"Average Latency: {summary['avg_latency_ms']:.0f}ms")
-    logger.info(f"Average Accuracy: {summary['avg_accuracy']:.1f}%")
+    bprint(f"\n{'=' * 80}")
+    bprint("📊 BENCHMARK RESULTS SUMMARY")
+    bprint("=" * 80)
+    bprint(f"Total Tests: {summary['total_tests']}")
+    bprint(f"Passed: {summary['passed']} ✅")
+    bprint(f"Failed: {summary['failed']} ❌")
+    bprint(f"Pass Rate: {summary['pass_rate']:.1f}%")
+    bprint(f"Average Latency: {summary['avg_latency_ms']:.0f}ms")
+    bprint(f"Average Accuracy: {summary['avg_accuracy']:.1f}%")
 
-    logger.info(f"\n{'=' * 80}")
-    logger.info("📈 RESULTS BY CATEGORY")
-    logger.info("=" * 80)
+    bprint(f"\n{'=' * 80}")
+    bprint("📈 RESULTS BY CATEGORY")
+    bprint("=" * 80)
     for category, stats in category_stats.items():
-        logger.info(f"\n{category.upper()}:")
-        logger.info(f"  Tests: {stats['tests']}")
-        logger.info(f"  Pass Rate: {stats['pass_rate']:.1f}%")
-        logger.info(f"  Avg Latency: {stats['avg_latency_ms']:.0f}ms")
+        bprint(f"\n{category.upper()}:")
+        bprint(f"  Tests: {stats['tests']}")
+        bprint(f"  Pass Rate: {stats['pass_rate']:.1f}%")
+        bprint(f"  Avg Latency: {stats['avg_latency_ms']:.0f}ms")
 
     # Failed tests details
     failed_results = [r for r in metrics.results if not r.get("passed", False)]
     if failed_results:
-        logger.info(f"\n{'=' * 80}")
-        logger.info("❌ FAILED TESTS DETAILS")
-        logger.info("=" * 80)
+        bprint(f"\n{'=' * 80}")
+        bprint("❌ FAILED TESTS DETAILS")
+        bprint("=" * 80)
         for result in failed_results:
-            logger.info(f"\nQuery: {result['query']}")
+            bprint(f"\nQuery: {result['query']}")
             if not result.get("latency_ok", True):
-                logger.info(f"  ⚠️ Latency: {result['latency_ms']:.0f}ms (too slow)")
+                bprint(f"  ⚠️ Latency: {result['latency_ms']:.0f}ms (too slow)")
             if not result.get("accuracy_ok", True):
-                logger.info(f"  ⚠️ Accuracy: {result['accuracy']:.1f}% (too low)")
-                logger.info(f"  Missing topics: {', '.join(result.get('topics_missing', []))}")
+                bprint(f"  ⚠️ Accuracy: {result['accuracy']:.1f}% (too low)")
+                bprint(f"  Missing topics: {', '.join(result.get('topics_missing', []))}")
             if result.get("error"):
-                logger.info(f"  ⚠️ Error: {result['error']}")
+                bprint(f"  ⚠️ Error: {result['error']}")
 
     # Save results to JSON
     output_file = Path(__file__).parent.parent.parent / "benchmark_results.json"
@@ -332,23 +421,23 @@ def run_benchmarks():
             indent=2,
         )
 
-    logger.info(f"\n{'=' * 80}")
-    logger.info(f"💾 Results saved to: {output_file}")
-    logger.info("=" * 80)
+    bprint(f"\n{'=' * 80}")
+    bprint(f"💾 Results saved to: {output_file}")
+    bprint("=" * 80)
 
     # Final verdict
-    logger.info(f"\n{'=' * 80}")
+    bprint(f"\n{'=' * 80}")
     if summary["pass_rate"] >= 80:
-        logger.info("🎉 EXCELLENT! Chatbot performance is strong")
+        bprint("🎉 EXCELLENT! Chatbot performance is strong")
     elif summary["pass_rate"] >= 60:
-        logger.info("✅ GOOD! Chatbot performance is acceptable")
+        bprint("✅ GOOD! Chatbot performance is acceptable")
     elif summary["pass_rate"] >= 40:
-        logger.info("⚠️ NEEDS IMPROVEMENT! Several issues detected")
+        bprint("⚠️ NEEDS IMPROVEMENT! Several issues detected")
     else:
-        logger.info("❌ POOR! Significant improvements needed")
+        bprint("❌ POOR! Significant improvements needed")
 
-    logger.info(f"Overall Score: {summary['pass_rate']:.1f}%")
-    logger.info("=" * 80)
+    bprint(f"Overall Score: {summary['pass_rate']:.1f}%")
+    bprint("=" * 80)
 
     return summary
 

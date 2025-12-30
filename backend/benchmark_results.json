@@ -1,197 +1,408 @@
 {
   "summary": {
-    "total_tests": 12,
-    "passed": 0,
-    "failed": 12,
-    "pass_rate": 0.0,
-    "avg_latency_ms": 182117.75002876917,
-    "avg_accuracy": 14.583333333333334
+    "total_tests": 19,
+    "passed": 17,
+    "failed": 2,
+    "pass_rate": 89.47368421052632,
+    "avg_latency_ms": 4688.411838129947,
+    "avg_accuracy": 93.42105263157895
   },
   "category_stats": {
     "policy": {
       "tests": 8,
-      "passed": 0,
-      "total_latency": 1874656.903743744,
-      "pass_rate": 0.0,
-      "avg_latency_ms": 234332.112967968
+      "passed": 7,
+      "total_latency": 34604.70771789551,
+      "pass_rate": 87.5,
+      "avg_latency_ms": 4325.5884647369385
     },
     "tool_use": {
       "tests": 2,
-      "passed": 0,
-      "total_latency": 310756.0966014862,
-      "pass_rate": 0.0,
-      "avg_latency_ms": 155378.0483007431
+      "passed": 2,
+      "total_latency": 19575.69980621338,
+      "pass_rate": 100.0,
+      "avg_latency_ms": 9787.84990310669
     },
     "faq": {
       "tests": 2,
-      "passed": 0,
-      "total_latency": 0,
-      "pass_rate": 0.0,
-      "avg_latency_ms": 0.0
+      "passed": 2,
+      "total_latency": 5508.535146713257,
+      "pass_rate": 100.0,
+      "avg_latency_ms": 2754.2675733566284
+    },
+    "multilingual": {
+      "tests": 3,
+      "passed": 3,
+      "total_latency": 16375.476360321045,
+      "pass_rate": 100.0,
+      "avg_latency_ms": 5458.492120107015
+    },
+    "identity": {
+      "tests": 2,
+      "passed": 2,
+      "total_latency": 4953.963994979858,
+      "pass_rate": 100.0,
+      "avg_latency_ms": 2476.981997489929
+    },
+    "boundary": {
+      "tests": 2,
+      "passed": 1,
+      "total_latency": 8061.441898345947,
+      "pass_rate": 50.0,
+      "avg_latency_ms": 4030.7209491729736
     }
   },
   "detailed_results": [
     {
       "query": "What's the baggage allowance for economy class domestic flights?",
       "category": "policy",
-      "passed": false,
-      "latency_ms": 310466.87364578247,
-      "latency_ok": false,
-      "accuracy": 0.0,
-      "accuracy_ok": false,
-      "topics_found": [],
-      "topics_missing": [
+      "passed": true,
+      "latency_ms": 2744.555711746216,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
         "15 kg",
         "25 kg",
         "economy",
         "domestic"
       ],
-      "response_length": 267
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 341
     },
     {
       "query": "Can I bring power banks in checked baggage?",
       "category": "policy",
-      "passed": false,
-      "latency_ms": 308506.6149234772,
-      "latency_ok": false,
-      "accuracy": 100.0,
+      "passed": true,
+      "latency_ms": 1887.0048522949219,
+      "latency_ok": true,
+      "accuracy": 75.0,
       "accuracy_ok": true,
+      "forbidden_ok": true,
       "topics_found": [
         "power bank",
         "cabin",
-        "prohibited",
         "checked"
       ],
-      "topics_missing": [],
-      "response_length": 281
+      "topics_missing": [
+        "prohibited"
+      ],
+      "forbidden_found": [],
+      "response_length": 119
     },
     {
       "query": "Can I cancel my flight within 24 hours for free?",
       "category": "policy",
-      "passed": false,
-      "latency_ms": 307978.23786735535,
-      "latency_ok": false,
-      "accuracy": 0.0,
-      "accuracy_ok": false,
-      "topics_found": [],
-      "topics_missing": [
+      "passed": true,
+      "latency_ms": 2556.9112300872803,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
         "24 hours",
         "free",
         "7 days",
         "departure"
       ],
-      "response_length": 428
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 342
     },
     {
       "query": "What happens if I don't show up for my flight?",
       "category": "policy",
-      "passed": false,
-      "latency_ms": 308111.873626709,
-      "latency_ok": false,
-      "accuracy": 0.0,
-      "accuracy_ok": false,
-      "topics_found": [],
-      "topics_missing": [
+      "passed": true,
+      "latency_ms": 3324.3727684020996,
+      "latency_ok": true,
+      "accuracy": 75.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
         "no-show",
         "refund",
-        "taxes",
+        "taxes"
+      ],
+      "topics_missing": [
         "forfeit"
       ],
-      "response_length": 670
+      "forbidden_found": [],
+      "response_length": 663
     },
     {
       "query": "Show me flights from Delhi to Mumbai",
       "category": "tool_use",
-      "passed": false,
-      "latency_ms": 310756.0966014862,
-      "latency_ok": false,
-      "accuracy": 50.0,
+      "passed": true,
+      "latency_ms": 8665.993213653564,
+      "latency_ok": true,
+      "accuracy": 100.0,
       "accuracy_ok": true,
+      "forbidden_ok": true,
       "topics_found": [
         "DEL",
-        "BOM"
-      ],
-      "topics_missing": [
+        "BOM",
         "AI",
         "flight"
       ],
-      "response_length": 173
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 702
     },
     {
       "query": "What flights are available from Mumbai to Bangalore?",
       "category": "tool_use",
-      "passed": false,
-      "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\nPlease retry in 294.435125ms. [links {\n  description: \"Learn more about Gemini API quotas\"\n  url: \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n}\n, violations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_input_token_count\"\n  quota_id: \"GenerateContentInputTokensPerModelPerMinute-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\n, retry_delay {\n}\n]",
-      "latency_ms": 0,
-      "accuracy": 0
+      "passed": true,
+      "latency_ms": 10909.706592559814,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "BOM",
+        "BLR",
+        "flight",
+        "available"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 1574
     },
     {
       "query": "How do I earn Flying Returns points?",
       "category": "policy",
-      "passed": false,
-      "error": "Timeout of 600.0s exceeded, last exception: 503 failed to connect to all addresses; last error: UNKNOWN: ipv4:142.251.140.234:443: socket is null",
-      "latency_ms": 0,
-      "accuracy": 0
+      "passed": true,
+      "latency_ms": 2755.878448486328,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "6 points",
+        "INR 100",
+        "Flying Returns",
+        "earn"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 1001
     },
     {
       "query": "What are the benefits of Platinum status?",
       "category": "policy",
       "passed": false,
-      "latency_ms": 321907.1741104126,
+      "latency_ms": 11509.199619293213,
       "latency_ok": false,
-      "accuracy": 0.0,
-      "accuracy_ok": false,
-      "topics_found": [],
-      "topics_missing": [
+      "accuracy": 75.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
         "Platinum",
-        "lounge",
         "upgrade",
         "bonus"
       ],
-      "response_length": 1013
+      "topics_missing": [
+        "lounge"
+      ],
+      "forbidden_found": [],
+      "response_length": 900
     },
     {
       "query": "Can I travel with my pet dog?",
       "category": "policy",
-      "passed": false,
-      "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\nPlease retry in 45.620849171s. [links {\n  description: \"Learn more about Gemini API quotas\"\n  url: \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n}\n, violations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_input_token_count\"\n  quota_id: \"GenerateContentInputTokensPerModelPerMinute-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\n, retry_delay {\n  seconds: 45\n}\n]",
-      "latency_ms": 0,
-      "accuracy": 0
+      "passed": true,
+      "latency_ms": 4197.535753250122,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "pet",
+        "dog",
+        "cabin",
+        "fee",
+        "certificate"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 1866
     },
     {
       "query": "I need wheelchair assistance",
       "category": "policy",
-      "passed": false,
-      "latency_ms": 317686.1295700073,
-      "latency_ok": false,
-      "accuracy": 25.0,
-      "accuracy_ok": false,
+      "passed": true,
+      "latency_ms": 5629.249334335327,
+      "latency_ok": true,
+      "accuracy": 75.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
       "topics_found": [
-        "assistance"
-      ],
-      "topics_missing": [
         "wheelchair",
-        "free",
+        "assistance",
         "request"
       ],
-      "response_length": 1115
+      "topics_missing": [
+        "free"
+      ],
+      "forbidden_found": [],
+      "response_length": 1382
     },
     {
       "query": "When should I arrive at the airport for an international flight?",
       "category": "faq",
-      "passed": false,
-      "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\nPlease retry in 9.163890298s. [links {\n  description: \"Learn more about Gemini API quotas\"\n  url: \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n}\n, violations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_input_token_count\"\n  quota_id: \"GenerateContentInputTokensPerModelPerMinute-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\n, retry_delay {\n  seconds: 9\n}\n]",
-      "latency_ms": 0,
-      "accuracy": 0
+      "passed": true,
+      "latency_ms": 1968.8122272491455,
+      "latency_ok": true,
+      "accuracy": 75.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "3 hours",
+        "international",
+        "airport"
+      ],
+      "topics_missing": [
+        "arrival"
+      ],
+      "forbidden_found": [],
+      "response_length": 198
     },
     {
       "query": "How do I check in online?",
       "category": "faq",
+      "passed": true,
+      "latency_ms": 3539.7229194641113,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "web check-in",
+        "48 hours",
+        "PNR",
+        "online"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 1366
+    },
+    {
+      "query": "¿Cuánto equipaje puedo llevar en clase económica?",
+      "category": "multilingual",
+      "passed": true,
+      "latency_ms": 2767.0981884002686,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "kg",
+        "equipaje"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 671
+    },
+    {
+      "query": "¿Cuál es la política de cancelación?",
+      "category": "multilingual",
+      "passed": true,
+      "latency_ms": 4749.298334121704,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "cancelación",
+        "reembolso"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 2404
+    },
+    {
+      "query": "दिल्ली से मुंबई की फ्लाइट दिखाओ",
+      "category": "multilingual",
+      "passed": true,
+      "latency_ms": 8859.079837799072,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "DEL",
+        "BOM"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 1206
+    },
+    {
+      "query": "Who are you?",
+      "category": "identity",
+      "passed": true,
+      "latency_ms": 2508.4729194641113,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "Maharaja",
+        "Air India"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 87
+    },
+    {
+      "query": "Are you an AI?",
+      "category": "identity",
+      "passed": true,
+      "latency_ms": 2445.491075515747,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "Maharaja",
+        "assistant"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 109
+    },
+    {
+      "query": "Can you book a hotel for me?",
+      "category": "boundary",
       "passed": false,
-      "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash\nPlease retry in 50.518777116s. [links {\n  description: \"Learn more about Gemini API quotas\"\n  url: \"https://ai.google.dev/gemini-api/docs/rate-limits\"\n}\n, violations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_input_token_count\"\n  quota_id: \"GenerateContentInputTokensPerModelPerMinute-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\nviolations {\n  quota_metric: \"generativelanguage.googleapis.com/generate_content_free_tier_requests\"\n  quota_id: \"GenerateRequestsPerDayPerProjectPerModel-FreeTier\"\n  quota_dimensions {\n    key: \"model\"\n    value: \"gemini-2.0-flash\"\n  }\n  quota_dimensions {\n    key: \"location\"\n    value: \"global\"\n  }\n}\n, retry_delay {\n  seconds: 50\n}\n]",
-      "latency_ms": 0,
-      "accuracy": 0
+      "latency_ms": 6007.465362548828,
+      "latency_ok": false,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "flight"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 317
+    },
+    {
+      "query": "Is IndiGo better than Air India?",
+      "category": "boundary",
+      "passed": true,
+      "latency_ms": 2053.976535797119,
+      "latency_ok": true,
+      "accuracy": 100.0,
+      "accuracy_ok": true,
+      "forbidden_ok": true,
+      "topics_found": [
+        "Air India"
+      ],
+      "topics_missing": [],
+      "forbidden_found": [],
+      "response_length": 291
     }
   ],
-  "timestamp": "2025-12-25 13:34:08"
+  "timestamp": "2025-12-30 14:56:30"
 }

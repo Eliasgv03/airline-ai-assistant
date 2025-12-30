@@ -131,7 +131,22 @@ def _get_flight_details_impl(flight_number: str) -> str:
 # Create Structured Tools with Schemas
 # ============================================
 
+
+def _search_flights_sync(origin: str, destination: str, date: str = "tomorrow") -> str:
+    """Sync wrapper for search_flights (for benchmark and non-async contexts)"""
+    import asyncio
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    return loop.run_until_complete(_search_flights_impl(origin, destination, date))
+
+
 search_flights = StructuredTool.from_function(
+    func=_search_flights_sync,
     coroutine=_search_flights_impl,
     name="search_flights",
     description=(

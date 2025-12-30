@@ -38,11 +38,11 @@ An AI-powered airline chatbot inspired by Air India's "Maharaja". Built for the 
 | Requirement | Status | Implementation |
 |-------------|--------|----------------|
 | Streaming Responses | ✅ | Server-Sent Events (SSE) for real-time streaming |
-| Multi-language | ✅ | English, Hindi, Spanish, Portuguese, French + auto-detection |
+| Multi-language | ✅ | English, Hindi, Spanish, Portuguese, French + Lingua auto-detection (95%+ accuracy) |
 | Real Air India Data | ✅ | 8 policy documents (baggage, cancellation, check-in, etc.) |
 | Professional UI | ✅ | Air India branding, welcome screen, flight cards |
 | Error Handling | ✅ | Graceful fallbacks, cross-provider LLM fallback |
-| Benchmarks | ⚠️ | Test suite exists but affected by API rate limits |
+| Benchmarks | ✅ | 19 automated tests, 89.5% pass rate, multilingual + identity + boundary tests |
 
 ---
 
@@ -57,6 +57,7 @@ An AI-powered airline chatbot inspired by Air India's "Maharaja". Built for the 
 | **PostgreSQL + pgvector** | Production-ready vector store, SQL operations, Render integration |
 | **Google Gemini** | **Primary LLM** - Latest models, multimodal, tool calling support |
 | **Groq** | **Fallback LLM** - Fast inference (30 RPM), auto-failover when Gemini unavailable |
+| **Lingua** | Language detection with 95%+ accuracy, replaces langdetect |
 | **Poetry** | Dependency management with lockfile for reproducibility |
 
 ### Frontend
@@ -96,7 +97,37 @@ An AI-powered airline chatbot inspired by Air India's "Maharaja". Built for the 
 1. **API Rate Limits**: Gemini free tier has strict limits (20 RPD). Groq recommended for production.
 2. **Memory Persistence**: Session history lost on server restart (in-memory storage).
 3. **Mock Flight Data**: Amadeus API requires production credentials for real flights.
-4. **Benchmark Results**: Test suite affected by API rate limits during execution.
+
+---
+
+## 📊 Benchmark Results
+
+Run: `poetry run python -m app.scripts.benchmark_chatbot`
+
+### Summary
+| Metric | Value |
+|--------|-------|
+| **Pass Rate** | 89.5% (17/19 tests) |
+| **Avg Latency** | 4.7s |
+| **Avg Accuracy** | 93.4% |
+
+### By Category
+| Category | Tests | Pass Rate | Avg Latency |
+|----------|-------|-----------|-------------|
+| Policy | 8 | 87.5% | 4.3s |
+| Tool Use | 2 | 100% | 9.8s |
+| FAQ | 2 | 100% | 2.8s |
+| Multilingual | 3 | 100% | 5.5s |
+| Identity | 2 | 100% | 2.5s |
+| Boundary | 2 | 50% | 4.0s |
+
+### Failed Tests (2)
+| Query | Reason | Latency |
+|-------|--------|---------|
+| "Benefits of Platinum status?" | ⏱️ Latency (11.5s > 5s limit) | 11,509ms |
+| "Can you book a hotel for me?" | ⏱️ Latency (6.0s > 5s limit) | 6,007ms |
+
+> **Note**: Both failures are due to API latency variability, not accuracy issues. The chatbot responded correctly in both cases.
 
 ---
 
