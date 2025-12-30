@@ -24,8 +24,11 @@ export function ChatMessage({ message, isUser, timestamp }: ChatMessageProps) {
                 isUser ? "flex-row-reverse" : "flex-row",
             )}
         >
-            <Avatar className={cn("h-8 w-8 shrink-0", isUser ? "bg-air-india-blue" : "bg-air-india-orange")}>
-                <AvatarFallback className="text-white">
+            <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback className={cn(
+                    "text-white",
+                    isUser ? "bg-air-india-blue" : "bg-air-india-orange"
+                )}>
                     {isUser ? <User className="h-4 w-4" /> : <Plane className="h-4 w-4" />}
                 </AvatarFallback>
             </Avatar>
