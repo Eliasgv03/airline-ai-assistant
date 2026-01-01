@@ -11,10 +11,63 @@ setup_logging()
 
 settings = get_settings()
 
+# OpenAPI documentation
+DESCRIPTION = """
+# 🛫 Air India Virtual Assistant API
+
+An AI-powered chatbot inspired by Air India's **"Maharaja"** assistant.
+Built for the AI Champions technical exercise.
+
+## Features
+
+* **💬 Conversational AI** - Natural multi-turn conversations with context memory
+* **✈️ Flight Search** - Real-time flight information via Amadeus API
+* **📚 RAG System** - Policy documents indexed in PostgreSQL + pgvector
+* **🌍 Multilingual** - Supports English, Hindi, Spanish, Portuguese, French
+* **🎭 Maharaja Persona** - Authentic Air India brand experience
+
+## Architecture
+
+- **LLM**: Google Gemini 2.5 Flash (with Groq fallback)
+- **Embeddings**: Google text-embedding-004
+- **Vector Store**: PostgreSQL + pgvector
+- **Framework**: LangChain for orchestration
+
+## Benchmark Results
+
+- **Pass Rate**: 89.5% (17/19 tests)
+- **Avg Latency**: 4.7s
+- **Avg Accuracy**: 93.4%
+"""
+
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title="Air India Assistant API",
+    description=DESCRIPTION,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    contact={
+        "name": "AI Champions Technical Exercise",
+        "url": "https://github.com/Eliasgv03/airline-ai-assistant",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    openapi_tags=[
+        {
+            "name": "chat",
+            "description": "Conversational AI endpoints for the Maharaja assistant",
+        },
+        {
+            "name": "flights",
+            "description": "Flight search and details via Amadeus API",
+        },
+        {
+            "name": "health",
+            "description": "Health and readiness checks",
+        },
+    ],
 )
 
 # CORS Middleware
@@ -72,20 +125,26 @@ async def startup_event():
     logger.info("✅ Application startup complete - server ready to receive requests")
 
 
-@app.get("/health")
+@app.get("/health", tags=["health"], summary="Health check")
 async def health_check():
+    """Basic health check endpoint for load balancers and monitoring."""
     return {"status": "ok", "environment": settings.ENVIRONMENT}
 
 
-@app.get("/ready")
+@app.get("/ready", tags=["health"], summary="Readiness check")
 async def readiness_check():
     """
-    Readiness endpoint.
+    Readiness endpoint for Kubernetes/container orchestration.
     With Google Embeddings API, the service is always ready immediately.
     """
     return {"status": "ready", "message": "All services ready"}
 
 
-@app.get("/")
+@app.get("/", tags=["health"], summary="API root", include_in_schema=False)
 async def root():
-    return {"message": "Welcome to Airline AI Assistant API"}
+    """Welcome message and API info."""
+    return {
+        "message": "Welcome to Air India Assistant API",
+        "docs": "/docs",
+        "version": settings.VERSION,
+    }

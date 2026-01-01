@@ -186,48 +186,6 @@ LANGUAGE_KEYWORDS = {
     ],
 }
 
-# Words that distinguish Spanish from Portuguese
-SPANISH_DISTINCTIVE = [
-    "vuelo",
-    "vuelos",
-    "equipaje",
-    "buscar",
-    "cuánto",
-    "cuándo",
-    "dónde",
-    "mañana",
-    "avión",
-]
-PORTUGUESE_DISTINCTIVE = [
-    "voo",
-    "voos",
-    "bagagem",
-    "procurar",
-    "quanto",
-    "quando",
-    "onde",
-    "amanhã",
-    "avião",
-]
-
-# Words that distinguish Italian from Spanish (to prevent misdetection)
-ITALIAN_DISTINCTIVE = [
-    "volo",
-    "voli",
-    "bagaglio",
-    "cercare",
-    "quanto",
-    "quando",
-    "dove",
-    "domani",
-    "aereo",
-    "grazie",
-    "prego",
-    "scusa",
-    "buongiorno",
-    "arrivederci",
-]
-
 
 def detect_language(text: str, default: str = "en", session_hint: str | None = None) -> str:
     """

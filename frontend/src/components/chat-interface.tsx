@@ -1,14 +1,12 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ChatMessage } from "./chat-message"
+import { ChatInput } from "./chat-input"
 import { TypingIndicator } from "./typing-indicator"
 import { FlightCard, type FlightData } from "./flight-card"
-import { Send, Moon, Sun } from "lucide-react"
+import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
 import { sendMessageStream, generateSessionId } from "@/lib/api"
 
@@ -113,13 +111,6 @@ export function ChatInterface() {
         }
     }
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault()
-            handleSendMessage()
-        }
-    }
-
     return (
         <div className="flex flex-col h-screen bg-background">
             {/* Header */}
@@ -192,27 +183,15 @@ export function ChatInterface() {
 
                         {/* Input - Centered on Welcome Screen */}
                         <div className="max-w-2xl w-full mt-8">
-                            <div className="flex gap-2 md:gap-3">
-                                <Input
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder="Ask me anything about your travel..."
-                                    className="flex-1 text-sm md:text-base h-12"
-                                />
-                                <Button
-                                    onClick={handleSendMessage}
-                                    size="icon"
-                                    className="shrink-0 h-12 w-12 bg-air-india-orange hover:bg-air-india-orange/90 text-white"
-                                    disabled={!inputValue.trim() || isTyping}
-                                >
-                                    <Send className="h-5 w-5" />
-                                    <span className="sr-only">Send message</span>
-                                </Button>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-3 text-center">
-                                Try asking: &quot;Find flights from Delhi to Mumbai&quot; or &quot;What&apos;s the baggage allowance?&quot;
-                            </p>
+                            <ChatInput
+                                value={inputValue}
+                                onChange={setInputValue}
+                                onSend={handleSendMessage}
+                                disabled={isTyping}
+                                placeholder="Ask me anything about your travel..."
+                                size="large"
+                                helperText='Try asking: "Find flights from Delhi to Mumbai" or "What is the baggage allowance?"'
+                            />
                         </div>
                     </div>
                 </div>
@@ -243,27 +222,14 @@ export function ChatInterface() {
                     {/* Input - Bottom Position During Chat */}
                     <div className="border-t border-border bg-card shadow-lg sticky bottom-0">
                         <div className="max-w-4xl mx-auto px-4 md:px-6 py-4">
-                            <div className="flex gap-2 md:gap-3">
-                                <Input
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder="Type your message..."
-                                    className="flex-1 text-sm md:text-base"
-                                />
-                                <Button
-                                    onClick={handleSendMessage}
-                                    size="icon"
-                                    className="shrink-0 bg-air-india-orange hover:bg-air-india-orange/90 text-white"
-                                    disabled={!inputValue.trim() || isTyping}
-                                >
-                                    <Send className="h-4 w-4 md:h-5 md:w-5" />
-                                    <span className="sr-only">Send message</span>
-                                </Button>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-2 text-center">
-                                Press Enter to send • Air India Virtual Assistant
-                            </p>
+                            <ChatInput
+                                value={inputValue}
+                                onChange={setInputValue}
+                                onSend={handleSendMessage}
+                                disabled={isTyping}
+                                placeholder="Type your message..."
+                                helperText="Press Enter to send • Air India Virtual Assistant"
+                            />
                         </div>
                     </div>
                 </>

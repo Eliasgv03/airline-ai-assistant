@@ -69,53 +69,54 @@ class ChatService:
             logger.error(f"❌ LLM invocation failed: {e}")
             raise
 
+    def _prepare_context(self, session_id: str, user_message: str) -> list[BaseMessage]:
+        """
+        Common setup for both sync and async chat processing.
+        Handles language detection, memory update, RAG retrieval, and prompt construction.
+        """
+        logger.info(f"🔵 Preparing context for session {session_id}")
+        logger.debug(f"User message: {user_message[:100]}...")
+
+        # 🌍 Detect user's language with session persistence
+        session_lang = self._session_languages.get(session_id)
+        detected_lang = detect_language(user_message, session_hint=session_lang)
+        self._session_languages[session_id] = detected_lang
+        lang_instruction = get_language_instruction(detected_lang)
+        logger.info(f"🌍 Detected language: {detected_lang}")
+
+        # Add user message to memory
+        self.memory_service.add_message(session_id, "user", user_message)
+
+        # Get conversation history
+        history = self.memory_service.get_history(session_id)
+        logger.debug(f"Retrieved {len(history)} messages from history")
+
+        # Retrieve context from vector store (if RAG is available)
+        context = ""
+        if self._rag_available and self.vector_service:
+            logger.info("📚 Retrieving context from vector store...")
+            context_docs = self.vector_service.similarity_search(user_message, k=3)
+            context = "\n\n".join([doc.page_content for doc in context_docs])
+            logger.debug(f"Retrieved {len(context_docs)} context documents ({len(context)} chars)")
+        else:
+            logger.info("📚 RAG not available - proceeding without knowledge base context")
+
+        # Build messages for LLM with language instruction
+        system_prompt = get_system_prompt(context)
+        system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
+        messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
+        messages.extend(history)
+
+        return messages
+
     @traceable(run_type="chain", name="process_message")
     def process_message(self, session_id: str, user_message: str) -> str:
         """
         Process a user message and return assistant response
-
-        Args:
-            session_id: Unique session identifier
-            user_message: User's input message
-
-        Returns:
-            Assistant's response as a string
         """
         try:
-            logger.info(f"🔵 Processing message for session {session_id}")
-            logger.debug(f"User message: {user_message[:100]}...")
-
-            # 🌍 Detect user's language
-            detected_lang = detect_language(user_message)
-            lang_instruction = get_language_instruction(detected_lang)
-            logger.info(f"🌍 Detected language: {detected_lang}")
-
-            # Add user message to memory
-            self.memory_service.add_message(session_id, "user", user_message)
-
-            # Get conversation history
-            history = self.memory_service.get_history(session_id)
-            logger.debug(f"Retrieved {len(history)} messages from history")
-
-            # Retrieve context from vector store (if RAG is available)
-            context = ""
-            if self._rag_available and self.vector_service:
-                logger.info("📚 Retrieving context from vector store...")
-                context_docs = self.vector_service.similarity_search(user_message, k=3)
-                context = "\n\n".join([doc.page_content for doc in context_docs])
-                logger.debug(
-                    f"Retrieved {len(context_docs)} context documents ({len(context)} chars)"
-                )
-            else:
-                logger.info("📚 RAG not available - proceeding without knowledge base context")
-
-            # Build messages for LLM with language instruction
-            system_prompt = get_system_prompt(context)
-            system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
-            messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
-
-            # Add conversation history (convert BaseMessage to proper format)
-            messages.extend(history)
+            # Shared setup
+            messages = self._prepare_context(session_id, user_message)
 
             logger.info("💬 Invoking LLM with tool support...")
             logger.debug(f"Total messages in context: {len(messages)}")
@@ -167,7 +168,6 @@ class ChatService:
                 logger.info("✅ Direct response (no tools used)")
 
             # Add assistant response to memory
-            # Ensure assistant_response is a string
             assistant_response_str = (
                 assistant_response
                 if isinstance(assistant_response, str)
@@ -177,7 +177,6 @@ class ChatService:
             logger.debug(f"Assistant response: {assistant_response_str[:100]}...")
 
             logger.info(f"🎉 Message processed successfully for session {session_id}")
-            # Return the already-converted string
             return assistant_response_str
 
         except Exception as e:
@@ -191,40 +190,8 @@ class ChatService:
         Handles tool calls properly by executing them and streaming final results.
         """
         try:
-            logger.info(f"🔵 Processing streaming message for session {session_id}")
-            logger.debug(f"User message: {user_message[:100]}...")
-
-            # 🌍 Detect user's language with session persistence
-            session_lang = self._session_languages.get(session_id)
-            detected_lang = detect_language(user_message, session_hint=session_lang)
-            self._session_languages[session_id] = detected_lang
-            lang_instruction = get_language_instruction(detected_lang)
-            logger.info(f"🌍 Detected language: {detected_lang}")
-
-            # Add user message to memory
-            self.memory_service.add_message(session_id, "user", user_message)
-
-            # Get conversation history
-            history = self.memory_service.get_history(session_id)
-            logger.debug(f"Retrieved {len(history)} messages from history")
-
-            # Retrieve context from vector store (if RAG is available)
-            context = ""
-            if self._rag_available and self.vector_service:
-                logger.info("📚 Retrieving context from vector store...")
-                context_docs = self.vector_service.similarity_search(user_message, k=3)
-                context = "\n\n".join([doc.page_content for doc in context_docs])
-                logger.debug(
-                    f"Retrieved {len(context_docs)} context documents ({len(context)} chars)"
-                )
-            else:
-                logger.info("📚 RAG not available - proceeding without knowledge base context")
-
-            # Build messages for LLM with language instruction
-            system_prompt = get_system_prompt(context)
-            system_prompt_with_lang = f"{system_prompt}\n\n{lang_instruction}"
-            messages: list[BaseMessage] = [SystemMessage(content=system_prompt_with_lang)]
-            messages.extend(history)
+            # Shared setup
+            messages = self._prepare_context(session_id, user_message)
 
             logger.info(f"💬 Starting streaming via {llm_manager.provider_name}...")
 
@@ -262,10 +229,6 @@ class ChatService:
 
                     # Yield a nice status indicator
                     yield "\n\n🔍 *Searching flights...*\n\n"
-
-                    # Build tool response messages
-                    from langchain.schema import AIMessage
-                    from langchain_core.messages import ToolMessage
 
                     # Create AI message with tool calls
                     ai_message = AIMessage(content=full_response, tool_calls=tool_calls_collected)

@@ -1,8 +1,8 @@
 """
-Flights API endpoints
+Flights API Endpoints
 
-Provides REST API for flight search functionality.
-Flight search is also available via the chatbot using natural language.
+Provides REST API for flight search functionality using Amadeus API.
+Supports both IATA codes and city names with automatic resolution.
 """
 
 from datetime import date
@@ -14,31 +14,54 @@ from app.services.flight_service import get_flight_service
 router = APIRouter(prefix="/flights", tags=["flights"])
 
 
-@router.get("/search")
+@router.get(
+    "/search",
+    summary="Search for available flights",
+    description="""
+Search for Air India flights between two cities or airports.
+
+**Supported input formats:**
+- City names: "Delhi", "Mumbai", "New York"
+- IATA codes: "DEL", "BOM", "JFK"
+- Mixed: "Delhi" → "BOM"
+
+**Example requests:**
+- `/flights/search?origin=Delhi&destination=Mumbai`
+- `/flights/search?origin=DEL&destination=BOM&date=2024-12-31`
+
+**Note:** Uses Amadeus API for real flight data with mock fallback.
+    """,
+)
 async def search_flights(
     origin: str = Query(
-        ..., min_length=2, max_length=50, description="Origin city or airport code"
+        ...,
+        min_length=2,
+        max_length=50,
+        description="Origin city name or IATA code (e.g., 'Delhi' or 'DEL')",
+        examples=["Delhi", "DEL", "Mumbai"],
     ),
     destination: str = Query(
-        ..., min_length=2, max_length=50, description="Destination city or airport code"
+        ...,
+        min_length=2,
+        max_length=50,
+        description="Destination city name or IATA code (e.g., 'Mumbai' or 'BOM')",
+        examples=["Mumbai", "BOM", "Bangalore"],
     ),
-    date_: date | None = Query(default=None, alias="date", description="Optional departure date"),
-    max_results: int = Query(default=5, ge=1, le=20, description="Maximum number of results"),
+    date_: date | None = Query(
+        default=None,
+        alias="date",
+        description="Departure date in YYYY-MM-DD format (defaults to today)",
+    ),
+    max_results: int = Query(
+        default=5,
+        ge=1,
+        le=20,
+        description="Maximum number of flights to return",
+    ),
 ):
-    """
-    Search for available flights between origin and destination.
-
-    - **origin**: City name (e.g., "Delhi") or airport code (e.g., "DEL")
-    - **destination**: City name (e.g., "Mumbai") or airport code (e.g., "BOM")
-    - **date**: Optional departure date (YYYY-MM-DD format)
-    - **max_results**: Number of flights to return (1-20)
-
-    Returns:
-        List of available flights with prices and schedules
-    """
+    """Search for available flights between origin and destination."""
     flight_service = get_flight_service()
 
-    # Convert date to string if provided
     date_str = date_.isoformat() if date_ else None
 
     flights = await flight_service.search_flights(
